@@ -5,7 +5,7 @@ using deadlock_dotnet_sdk.Exceptions;
 namespace deadlock_dotnet_sdk.Domain
 {
     /// <summary>
-    /// Collection of native methods.
+    /// Collection of native methods
     /// </summary>
     internal static class NativeMethods
     {
