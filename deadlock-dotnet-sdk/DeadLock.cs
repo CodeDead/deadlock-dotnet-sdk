@@ -5,6 +5,32 @@ namespace deadlock_dotnet_sdk
 {
     public class DeadLock
     {
+        #region Properties
+
+        /// <summary>
+        /// Property that specifies whether inner exceptions should be rethrown or not
+        /// </summary>
+        public bool RethrowExceptions { get; set; }
+
+        #endregion
+
+        /// <summary>
+        /// Default constructor
+        /// </summary>
+        public DeadLock()
+        {
+            // Default constructor
+        }
+
+        /// <summary>
+        /// Initialize a new DeadLock
+        /// </summary>
+        /// <param name="rethrowExceptions">True if inner exceptions should be rethrown, otherwise false</param>
+        public DeadLock(bool rethrowExceptions)
+        {
+            RethrowExceptions = rethrowExceptions;
+        }
+
         /// <summary>
         /// Retrieve the FileLocker object that contains a List of Process objects that are locking a file
         /// </summary>
@@ -12,9 +38,7 @@ namespace deadlock_dotnet_sdk
         /// <returns>The FileLocker object that contains a List of Process objects that are locking a file</returns>
         public FileLocker FindLockingProcesses(string filePath)
         {
-            IEnumerable<Process> lockers = NativeMethods.FindLockingProcesses(filePath);
-            FileLocker fileLocker = new(filePath, lockers.ToList());
-
+            FileLocker fileLocker = new(filePath, NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList());
             return fileLocker;
         }
 
@@ -45,8 +69,7 @@ namespace deadlock_dotnet_sdk
 
             await Task.Run(() =>
             {
-                IEnumerable<Process> lockers = NativeMethods.FindLockingProcesses(filePath);
-                fileLocker = new(filePath, lockers.ToList());
+                fileLocker = new FileLocker(filePath, NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList());
             });
 
             return fileLocker;
@@ -65,8 +88,7 @@ namespace deadlock_dotnet_sdk
             {
                 foreach (string filePath in filePaths)
                 {
-                    IEnumerable<Process> lockers = NativeMethods.FindLockingProcesses(filePath);
-                    fileLockers.Add(new(filePath, lockers.ToList()));
+                    fileLockers.Add(new FileLocker(filePath, NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList()));
                 }
             });
 

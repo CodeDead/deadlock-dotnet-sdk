@@ -10,12 +10,15 @@ namespace deadlock_dotnet_sdk.Domain
     internal static class NativeMethods
     {
         #region Variables
+
         private const int RmRebootReasonNone = 0;
         private const int CchRmMaxAppName = 255;
         private const int CchRmMaxSvcName = 63;
+
         #endregion
 
         #region Enum_Struct
+
         [StructLayout(LayoutKind.Sequential)]
         private struct RmUniqueProcess
         {
@@ -27,16 +30,22 @@ namespace deadlock_dotnet_sdk.Domain
         {
             // ReSharper disable once UnusedMember.Local
             RmUnknownApp = 0,
+
             // ReSharper disable once UnusedMember.Local
             RmMainWindow = 1,
+
             // ReSharper disable once UnusedMember.Local
             RmOtherWindow = 2,
+
             // ReSharper disable once UnusedMember.Local
             RmService = 3,
+
             // ReSharper disable once UnusedMember.Local
             RmExplorer = 4,
+
             // ReSharper disable once UnusedMember.Local
             RmConsole = 5,
+
             // ReSharper disable once UnusedMember.Local
             RmCritical = 1000
         }
@@ -45,15 +54,17 @@ namespace deadlock_dotnet_sdk.Domain
         private struct RmProcessInfo
         {
             internal RmUniqueProcess Process;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = CchRmMaxAppName + 1)]
             private readonly string strAppName;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = CchRmMaxSvcName + 1)]
             private readonly string strServiceShortName;
+
             private readonly RmAppType ApplicationType;
             private readonly uint AppStatus;
             private readonly uint TSSessionId;
-            [MarshalAs(UnmanagedType.Bool)]
-            private readonly bool bRestartable;
+            [MarshalAs(UnmanagedType.Bool)] private readonly bool bRestartable;
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
@@ -62,30 +73,28 @@ namespace deadlock_dotnet_sdk.Domain
             public int cbSize;
             public uint fMask;
             private readonly IntPtr hwnd;
-            [MarshalAs(UnmanagedType.LPTStr)]
-            public string lpVerb;
-            [MarshalAs(UnmanagedType.LPTStr)]
-            public string lpFile;
-            [MarshalAs(UnmanagedType.LPTStr)]
-            private readonly string lpParameters;
-            [MarshalAs(UnmanagedType.LPTStr)]
-            private readonly string lpDirectory;
+            [MarshalAs(UnmanagedType.LPTStr)] public string lpVerb;
+            [MarshalAs(UnmanagedType.LPTStr)] public string lpFile;
+            [MarshalAs(UnmanagedType.LPTStr)] private readonly string lpParameters;
+            [MarshalAs(UnmanagedType.LPTStr)] private readonly string lpDirectory;
             public int nShow;
             private readonly IntPtr hInstApp;
             private readonly IntPtr lpIDList;
-            [MarshalAs(UnmanagedType.LPTStr)]
-            private readonly string lpClass;
+            [MarshalAs(UnmanagedType.LPTStr)] private readonly string lpClass;
 
             private readonly IntPtr hkeyClass;
             private readonly uint dwHotKey;
             private readonly IntPtr hIcon;
             private readonly IntPtr hProcess;
         }
+
         #endregion
 
         #region DllImport
+
         [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
-        private static extern int RmRegisterResources(uint pSessionHandle, uint nFiles, string[] rgsFilenames, uint nApplications, [In] RmUniqueProcess[] rgApplications, uint nServices, string[] rgsServiceNames);
+        private static extern int RmRegisterResources(uint pSessionHandle, uint nFiles, string[] rgsFilenames,
+            uint nApplications, [In] RmUniqueProcess[] rgApplications, uint nServices, string[] rgsServiceNames);
 
         [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
         private static extern int RmStartSession(out uint pSessionHandle, int dwSessionFlags, string strSessionKey);
@@ -94,15 +103,18 @@ namespace deadlock_dotnet_sdk.Domain
         private static extern int RmEndSession(uint pSessionHandle);
 
         [DllImport("rstrtmgr.dll")]
-        private static extern int RmGetList(uint dwSessionHandle, out uint pnProcInfoNeeded, ref uint pnProcInfo, [In, Out] RmProcessInfo[] rgAffectedApps, ref uint lpdwRebootReasons);
+        private static extern int RmGetList(uint dwSessionHandle, out uint pnProcInfoNeeded, ref uint pnProcInfo,
+            [In, Out] RmProcessInfo[] rgAffectedApps, ref uint lpdwRebootReasons);
+
         #endregion
 
         /// <summary>
         /// Find the processes that are locking a file
         /// </summary>
         /// <param name="path">Path to the file</param>
+        /// <param name="rethrowExceptions">True if inner exceptions should be rethrown, otherwise false</param>
         /// <returns>A collection of processes that are locking a file</returns>
-        internal static IEnumerable<Process> FindLockingProcesses(string path)
+        internal static IEnumerable<Process> FindLockingProcesses(string path, bool rethrowExceptions)
         {
             string key = Guid.NewGuid().ToString();
             List<Process> processes = new();
@@ -119,8 +131,8 @@ namespace deadlock_dotnet_sdk.Domain
                 uint pnProcInfo = 0;
                 uint lpdwRebootReasons = RmRebootReasonNone;
 
-                string[] resources = { path };
-                res = RmRegisterResources(handle, (uint)resources.Length, resources, 0, null, 0, null);
+                string[] resources = {path};
+                res = RmRegisterResources(handle, (uint) resources.Length, resources, 0, null, 0, null);
 
                 if (res != 0)
                 {
@@ -137,7 +149,7 @@ namespace deadlock_dotnet_sdk.Domain
                     res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, processInfo, ref lpdwRebootReasons);
                     if (res == 0)
                     {
-                        processes = new List<Process>((int)pnProcInfo);
+                        processes = new List<Process>((int) pnProcInfo);
 
                         for (int i = 0; i < pnProcInfo; i++)
                         {
@@ -147,7 +159,7 @@ namespace deadlock_dotnet_sdk.Domain
                             }
                             catch (ArgumentException)
                             {
-
+                                if (rethrowExceptions) throw;
                             }
                         }
                     }
@@ -159,6 +171,7 @@ namespace deadlock_dotnet_sdk.Domain
             {
                 _ = RmEndSession(handle);
             }
+
             return processes;
         }
     }
