@@ -19,13 +19,13 @@ Install-Package deadlock-dotnet-sdk
 To find all the `FileLocker` objects that are locking a file, you can make use of the `FindLockingProcesses` method:
 ```c#
 string path = @"C:\...\file.txt";
-var lockers = DeadLock.FindLockingProcesses(path);
+List<FileLocker> lockers = DeadLock.FindLockingProcesses(path);
 ```
 
 You can also run the code asynchronously by calling the `FindLockingProcessesAsync` method`:
 ```c#
 string path = @"C:\...\file.txt";
-var lockers = await DeadLock.FindLockingProcessesAsync(path);
+List<FileLocker> lockers = await DeadLock.FindLockingProcessesAsync(path);
 ```
 
 ### Unlocking a file
