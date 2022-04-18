@@ -57,7 +57,7 @@ DeadLock.Unlock(locker);
 
 You can also run the code asynchronously by running the `UnlockAsync` method:
 ```c#
-DeadLock.UnlockAsync(locker);
+await DeadLock.UnlockAsync(locker);
 ```
 
 To unlock more than one `FileLocker` object, you can invoke the `Unlock` (or `UnlockAsync`) method with multiple `FileLocker` parameters:
