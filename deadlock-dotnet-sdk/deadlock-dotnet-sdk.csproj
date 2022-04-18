@@ -5,6 +5,7 @@
         <RootNamespace>deadlock_dotnet_sdk</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <Title>deadlock-dotnet-sdk</Title>
         <Description>DeadLock SDK that allows developers to unlock files that cannot be removed on Windows</Description>
         <Copyright>Copyright © 2022 CodeDead</Copyright>
         <PackageProjectUrl>https://github.com/CodeDead/deadlock-dotnet-sdk</PackageProjectUrl>
