@@ -7,14 +7,14 @@ namespace deadlock_dotnet_sdk.Domain
         #region Properties
 
         /// <summary>
-        /// Get the path of the file that is locked
+        /// Get or set the path of the file that is locked
         /// </summary>
-        public string Path { get; }
+        public string Path { get; set; }
 
         /// <summary>
-        /// Get the List of Process objects that are locking the file
+        /// Get or set the List of Process objects that are locking the file
         /// </summary>
-        public List<Process> Lockers { get; }
+        public List<Process> Lockers { get; set; }
 
         #endregion
 
