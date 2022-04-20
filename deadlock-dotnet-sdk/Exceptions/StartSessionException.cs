@@ -9,14 +9,5 @@
         {
             // Default constructor
         }
-
-        /// <summary>
-        /// Initialize a new StartSessionException
-        /// </summary>
-        /// <param name="message">The error message</param>
-        public StartSessionException(string message) : base(message)
-        {
-            // Default constructor
-        }
     }
 }
