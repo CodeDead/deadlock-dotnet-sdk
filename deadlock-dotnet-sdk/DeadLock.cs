@@ -38,7 +38,8 @@ namespace deadlock_dotnet_sdk
         /// <returns>The FileLocker object that contains a List of Process objects that are locking a file</returns>
         public FileLocker FindLockingProcesses(string filePath)
         {
-            FileLocker fileLocker = new(filePath, NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList());
+            FileLocker fileLocker = new(filePath,
+                NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList());
             return fileLocker;
         }
 
@@ -69,7 +70,8 @@ namespace deadlock_dotnet_sdk
 
             await Task.Run(() =>
             {
-                fileLocker = new FileLocker(filePath, NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList());
+                fileLocker = new FileLocker(filePath,
+                    NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList());
             });
 
             return fileLocker;
@@ -80,7 +82,7 @@ namespace deadlock_dotnet_sdk
         /// </summary>
         /// <param name="filePaths">The full path of a file</param>
         /// <returns>The List of FileLocker objects that contain the processes that are locking a file</returns>
-        public async Task<List<FileLocker>> FindLockingProcessesAsnyc(params string[] filePaths)
+        public async Task<List<FileLocker>> FindLockingProcessesAsync(params string[] filePaths)
         {
             List<FileLocker> fileLockers = new();
 
@@ -88,7 +90,8 @@ namespace deadlock_dotnet_sdk
             {
                 foreach (string filePath in filePaths)
                 {
-                    fileLockers.Add(new FileLocker(filePath, NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList()));
+                    fileLockers.Add(new FileLocker(filePath,
+                        NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList()));
                 }
             });
 
@@ -125,7 +128,7 @@ namespace deadlock_dotnet_sdk
         /// Unlock a File asynchronously by killing all the processes that are holding a handle on the file
         /// </summary>
         /// <param name="fileLocker">The FileLocker that contains the List of Process objects that should be killed</param>
-        public async void UnlockAsync(FileLocker fileLocker)
+        public async Task UnlockAsync(FileLocker fileLocker)
         {
             await Task.Run(() =>
             {
@@ -142,7 +145,7 @@ namespace deadlock_dotnet_sdk
         /// Unlock one or more files asynchronously by killing all the processes that are holding a handle on the files 
         /// </summary>
         /// <param name="fileLockers">The FileLocker objects that contain the List of Process objects that are locking a file</param>
-        public async void UnlockAsync(params FileLocker[] fileLockers)
+        public async Task UnlockAsync(params FileLocker[] fileLockers)
         {
             await Task.Run(() =>
             {
@@ -156,6 +159,53 @@ namespace deadlock_dotnet_sdk
                     }
                 }
             });
+        }
+
+        /// <summary>
+        /// Unlock a file without retrieving the List of FileLocker objects
+        /// </summary>
+        /// <param name="filePath">The path of the file that should be unlocked</param>
+        public void Unlock(string filePath)
+        {
+            FileLocker fileLocker = FindLockingProcesses(filePath);
+            Unlock(fileLocker);
+        }
+
+        /// <summary>
+        /// Unlock a file without retrieving the List of FileLocker objects asynchronously
+        /// </summary>
+        /// <param name="filePath">The path of the file that should be unlocked</param>
+        public async Task UnlockAsync(string filePath)
+        {
+            FileLocker locker = await FindLockingProcessesAsync(filePath);
+            await UnlockAsync(locker);
+        }
+
+        /// <summary>
+        /// Unlock one or more files without retrieving the List of FileLocker objects
+        /// </summary>
+        /// <param name="filePaths">The full paths of the files that should be unlocked</param>
+        public void Unlock(params string[] filePaths)
+        {
+            List<FileLocker> fileLockers = FindLockingProcesses(filePaths);
+
+            foreach (FileLocker fileLocker in fileLockers)
+            {
+                Unlock(fileLocker);
+            }
+        }
+
+        /// <summary>
+        /// Unlock one or more files without retrieving the List of FileLocker objects asynchronously
+        /// </summary>
+        /// <param name="filePaths">The full paths of the files that should be unlocked</param>
+        public async Task UnlockAsync(params string[] filePaths)
+        {
+            List<FileLocker> fileLockers = await FindLockingProcessesAsync(filePaths);
+            foreach (FileLocker f in fileLockers)
+            {
+                await UnlockAsync(f);
+            }
         }
     }
 }

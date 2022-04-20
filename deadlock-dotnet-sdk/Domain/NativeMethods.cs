@@ -67,27 +67,6 @@ namespace deadlock_dotnet_sdk.Domain
             [MarshalAs(UnmanagedType.Bool)] private readonly bool bRestartable;
         }
 
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        private struct ShellExecuteInfo
-        {
-            public int cbSize;
-            public uint fMask;
-            private readonly IntPtr hwnd;
-            [MarshalAs(UnmanagedType.LPTStr)] public string lpVerb;
-            [MarshalAs(UnmanagedType.LPTStr)] public string lpFile;
-            [MarshalAs(UnmanagedType.LPTStr)] private readonly string lpParameters;
-            [MarshalAs(UnmanagedType.LPTStr)] private readonly string lpDirectory;
-            public int nShow;
-            private readonly IntPtr hInstApp;
-            private readonly IntPtr lpIDList;
-            [MarshalAs(UnmanagedType.LPTStr)] private readonly string lpClass;
-
-            private readonly IntPtr hkeyClass;
-            private readonly uint dwHotKey;
-            private readonly IntPtr hIcon;
-            private readonly IntPtr hProcess;
-        }
-
         #endregion
 
         #region DllImport

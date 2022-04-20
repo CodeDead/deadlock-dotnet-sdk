@@ -65,6 +65,20 @@ To unlock more than one `FileLocker` object, you can invoke the `Unlock` (or `Un
 Unlock(fileLockerA, fileLockerB, fileLockerC);
 ```
 
+Alternatively, if you only want to unlock a file and you are not interested in using the `FileLocker` objects, you can do so by providing any of the `Unlock` or `UnlockAsync` methods with one or more `string` variables that represent the path or paths of the files that should be unlocked:
+```c#
+// Unlock a single path
+string path = @"C:\...\file.txt"; 
+Unlock(path);
+
+// Unlock multiple files
+Unlock(path1, path2, path3);
+
+// Asynchronously unlock one or more files
+await UnlockAsync(path);
+await UnlockAsync(path1, path2, path3);
+```
+
 ### `FileLocker`
 
 The `FileLocker` object contains a `List` of `System.Diagnostics.Process` objects that are locking a file.
