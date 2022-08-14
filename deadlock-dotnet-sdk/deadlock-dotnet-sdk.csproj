@@ -21,6 +21,7 @@
         <AssemblyVersion>1.0.1.0</AssemblyVersion>
         <FileVersion>1.0.1.0</FileVersion>
         <Version>1.0.1</Version>
+       <AllowUnsafeBlocks>true</AllowUnsafeBlocks><!-- required for some win32 interop involving pointers and fixed arrays/buffers -->
     </PropertyGroup>
 
     <ItemGroup>
