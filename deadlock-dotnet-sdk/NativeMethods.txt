@@ -1,0 +1,14 @@
+// Enter the name of any *Win32* API function, struct, enum, et cetera
+//  for it to be generated somewhere under the namespace "Windows.Win32"
+//
+// # Where can I find X?
+// Most of what you'll see in the WDK is not in the Win32 API.
+// As such, CsWin32 will not generate code for Kernel API
+//  except for some Kernel32 definitions.
+// 
+// Some editors support browsing symbols in the current Solution or workspace.
+// The hotkey for this is CTRL+T in Visual Studio and Visual Studio Code.
+// 
+// Methods will *always* generate in the class "Windows.Win32.PInvoke"
+// Basic types are typically found under "Windows.Win32.Foundation"
+//  and/or "Windows.Win32.System.WindowsProgramming"

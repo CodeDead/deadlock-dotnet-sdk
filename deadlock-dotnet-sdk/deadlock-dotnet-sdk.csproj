@@ -21,7 +21,8 @@
         <AssemblyVersion>1.0.1.0</AssemblyVersion>
         <FileVersion>1.0.1.0</FileVersion>
         <Version>1.0.1</Version>
-       <AllowUnsafeBlocks>true</AllowUnsafeBlocks><!-- required for some win32 interop involving pointers and fixed arrays/buffers -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks><!-- required for some win32 interop involving pointers and fixed arrays/buffers -->
+        <LangVersion>9</LangVersion><!-- Necessary for some of CsWin32's codegen when using nint, nuint, function pointers -->
     </PropertyGroup>
 
     <ItemGroup>
@@ -37,6 +38,14 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.2.10-beta">
+        <!-- Removing IncludeAssets allows us to "get better code generation by allowing nuget to bring in the System.Memory package as a transitive dependency." -->
+        <!-- <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>  -->
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
     </ItemGroup>
 
 </Project>
