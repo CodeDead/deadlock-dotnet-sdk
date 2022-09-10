@@ -295,6 +295,194 @@ internal static class NativeMethods
     }
 
     #endregion Structs
+
     #region Classes
+
+    /// <summary>
+    /// A SafeHandleZeroOrMinusOneIsInvalid wrapping a SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX<br/>
+    /// Before querying for system handles, call <see cref="Process.EnterDebugMode()"/> for easier access to restricted data.
+    /// </summary>
+    public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
+    {
+        protected SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx;
+
+        internal SafeHandleEx(bool ownsHandle = false) : base(ownsHandle)
+        { }
+
+        public SafeHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX newSysHandleEx, bool ownsHandle = false) : base(ownsHandle)
+        {
+            sysHandleEx = newSysHandleEx;
+            Init();
+        }
+
+        internal void Init()
+        {
+            try
+            {
+                //Process.EnterDebugMode(); Best practice: only call this once.
+
+                /** Open handle for process */
+                // PROCESS_QUERY_LIMITED_INFORMATION is necessary for QueryFullProcessImageName
+                // PROCESS_QUERY_LIMITED_INFORMATION + PROCESS_VM_READ for reading PEB from the process's memory space.
+                // if we need to duplicate a handle later, we'll use PROCESS_DUP_HANDLE
+
+                HANDLE rawHandle = OpenProcess(
+                    dwDesiredAccess: PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ,
+                    bInheritHandle: (BOOL)false,
+                    dwProcessId: (uint)ProcessId
+                );
+
+                if (rawHandle.IsNull)
+                    throw new Win32Exception("Failed to open process handle with access rights 'PROCESS_QUERY_LIMITED_INFORMATION' and 'PROCESS_VM_READ'. The following information will be unavailable: main module full name, process name, ");
+
+                SafeProcessHandle hProcess = new(rawHandle, true);
+
+                /** Get main module's full path */
+                ProcessMainModulePath = GetFullProcessImageName(hProcess);
+
+                /** Get Process's name */
+                if (!string.IsNullOrWhiteSpace(ProcessMainModulePath))
+                {
+                    ProcessName = Path.GetFileNameWithoutExtension(ProcessMainModulePath);
+                }
+
+                /** Get process's possibly-overwritten command line from the PEB struct in its memory space */
+                GetProcessCommandLine(hProcess);
+            }
+            catch (Exception e)
+            {
+                ExceptionLog.Add(e);
+            }
+        }
+
+        internal SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX SysHandleEx => sysHandleEx;
+
+        public unsafe void* Object => SysHandleEx.Object;
+        /// <summary>
+        /// cast to uint
+        /// </summary>
+        public HANDLE ProcessId => SysHandleEx.UniqueProcessId;
+        public HANDLE HandleValue => SysHandleEx.HandleValue;
+        public ushort CreatorBackTraceIndex => SysHandleEx.CreatorBackTraceIndex;
+        /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.GrantedAccess"/>
+        public ACCESS_MASK GrantedAccess => SysHandleEx.GrantedAccess;
+        public ushort ObjectTypeIndex => SysHandleEx.ObjectTypeIndex;
+        /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.HandleAttributes"/>
+        public uint HandleAttributes => SysHandleEx.HandleAttributes;
+
+        public string? ProcessCommandLine { get; private set; }
+        public string? ProcessMainModulePath { get; private set; }
+        public string? ProcessName { get; private set; }
+
+        /// <summary>
+        /// A list of exceptions thrown by constructors and other methods of this class.
+        /// </summary>
+        /// <remarks>Use List's methods (e.g. Add) to modify this list.</remarks>
+        public static List<Exception> ExceptionLog { get; } = new();
+
+        public void CloseDangerously()
+        {
+            HANDLE rawHProcess;
+            SafeProcessHandle? hProcess = null;
+            try
+            {
+                if ((rawHProcess = OpenProcess(
+                    PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE,
+                    true,
+                    (uint)ProcessId)
+                    ).IsNull)
+                {
+                    throw new Win32Exception($"Failed to open process with id {(int)ProcessId} to duplicate and close object handle.");
+                }
+
+                hProcess = new(rawHProcess, true);
+                if (DuplicateHandle(hProcess, this, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_CLOSE_SOURCE))
+                {
+                    dupHandle.Close();
+                    hProcess.Close();
+
+                    // finally, close this SafeHandleEx
+                    Close();
+                }
+                else
+                {
+                    throw new Win32Exception("Function DuplicateHandle failed to duplicate the handle");
+                }
+            }
+            catch (Exception e)
+            {
+                ExceptionLog.Add(e);
+                if (hProcess is not null)
+                    hProcess.Close();
+            }
+        }
+
+        public string GetObjectType() => SysHandleEx.GetObjectType();
+
+        /// <summary>
+        /// Try to get a process's command line from its PEB
+        /// </summary>
+        /// <param name="hProcess"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        /// <exception cref="Win32Exception"></exception>
+        private unsafe void GetProcessCommandLine(SafeProcessHandle hProcess)
+        {
+            /* Get PROCESS_BASIC_INFORMATION */
+            uint sysInfoLength = (uint)Marshal.SizeOf<PROCESS_BASIC_INFORMATION>();
+            PROCESS_BASIC_INFORMATION processBasicInfo;
+            IntPtr sysInfo = Marshal.AllocHGlobal((int)sysInfoLength);
+            NTSTATUS status = (NTSTATUS)0;
+            uint retLength = 0;
+
+            if ((status = NtQueryInformationProcess(
+                hProcess,
+                PROCESSINFOCLASS.ProcessBasicInformation,
+                (void*)sysInfo,
+                sysInfoLength,
+                ref retLength))
+                .IsSuccessful)
+            {
+                processBasicInfo = Marshal.PtrToStructure<PROCESS_BASIC_INFORMATION>(sysInfo);
+
+                // if our process is WOW64, we need to account for different pointer sizes if
+                // the target process is 64-bit
+                IsWow64Process(hProcess, out BOOL wow64Process);
+                if (Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess && wow64Process)
+                {
+                    throw new NotImplementedException("Reading a 64-bit process's PEB from a 32-bit process (under WOW64) is not yet implemented.");
+                    // too much trouble. If someone else wants to do it, be my guest.
+                    // https://stackoverflow.com/a/36798492/14894786
+                    // Reason: if our process is 32-bit, we'd be stuck with 32-bit pointers. 
+                    // If the PEB's address is in 64-bit address space, we can't access it 
+                    // because the pointer value we received was truncated from 64 bits to 
+                    // 32 bits.
+                }
+
+                IntPtr buf = Marshal.AllocHGlobal(sizeof(PEB));
+                if (ReadProcessMemory(hProcess, processBasicInfo.PebBaseAddress, (void*)buf, (nuint)sizeof(PEB), null))
+                {
+                    PEB peb = Marshal.PtrToStructure<PEB>(buf);
+                    ProcessCommandLine = (*peb.ProcessParameters).CommandLine.ToStringLength();
+                }
+                else
+                {
+                    // this calls Marshal.GetLastPInvokeError()
+                    // https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/ComponentModel/Win32Exception.cs?L46
+                    throw new Win32Exception("Failed to read the process's PEB in memory. While trying to read the PEB, the operation crossed into an area of the process that is inaccessible.");
+                }
+            }
+            else
+            {
+                throw new Exception("NtQueryInformationProcess failed to query the process's 'PROCESS_BASIC_INFORMATION'");
+            }
+        }
+
+        protected override bool ReleaseHandle()
+        {
+            Close();
+            return IsClosed;
+        }
+    }
+
     #endregion Classes
 }
