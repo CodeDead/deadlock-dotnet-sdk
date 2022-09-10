@@ -450,12 +450,13 @@ internal static class NativeMethods
         public string? ProcessName { get; private set; }
 
         /// <summary>
-        /// A list of exceptions thrown by constructors and other methods of this class.
+        /// A list of exceptions thrown by constructors and other methods of this class.<br/>
+        /// Intended to explain why the process command line, main module path, and name are unavailable.
         /// </summary>
         /// <remarks>Use List's methods (e.g. Add) to modify this list.</remarks>
         public static List<Exception> ExceptionLog { get; } = new();
 
-        public void CloseDangerously()
+        public void UnlockSystemHandle()
         {
             HANDLE rawHProcess;
             SafeProcessHandle? hProcess = null;
