@@ -131,7 +131,7 @@ internal static class NativeMethods
     /// <param name="rethrowExceptions"></param>
     /// <returns>A List of SafeFileHandle objects.</returns>
     /// <remarks>This might be arduously slow...</remarks>
-    public static List<SafeFileHandleEx> FindLockingHandles(string? path = null)
+    internal static List<SafeFileHandleEx> FindLockingHandles(string? path = null)
     {
         Process.EnterDebugMode(); // just in case
 
@@ -406,9 +406,9 @@ internal static class NativeMethods
     /// A SafeHandleZeroOrMinusOneIsInvalid wrapping a SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX<br/>
     /// Before querying for system handles, call <see cref="Process.EnterDebugMode()"/> for easier access to restricted data.
     /// </summary>
-    public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
+    internal class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
-        protected SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx;
+        private protected SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx;
 
         internal SafeHandleEx(bool ownsHandle = false) : base(ownsHandle)
         { }
@@ -589,8 +589,9 @@ internal static class NativeMethods
         }
     }
 
-    public class SafeFileHandleEx : SafeHandleEx
+    internal class SafeFileHandleEx : SafeHandleEx
     {
+        // TODO: there's gotta be a better way to cast a base class to an implementing class
         internal SafeFileHandleEx(SafeHandleEx safeHandleEx)
         {
             sysHandleEx = safeHandleEx.SysHandleEx;
@@ -600,8 +601,8 @@ internal static class NativeMethods
 
         public SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx, bool ownsHandle) : base(newSysHandleEx: sysHandleEx, ownsHandle: ownsHandle)
         {
-            base.sysHandleEx = sysHandleEx;
-            Init();
+            //base.sysHandleEx = sysHandleEx;
+            //Init();
             InitFile();
         }
 
