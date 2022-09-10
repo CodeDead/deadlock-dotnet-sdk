@@ -12,3 +12,41 @@
 // Methods will *always* generate in the class "Windows.Win32.PInvoke"
 // Basic types are typically found under "Windows.Win32.Foundation"
 //  and/or "Windows.Win32.System.WindowsProgramming"
+//
+// SetLastError is only enabled for native functions that support it. 
+
+//// Foundation ////
+BOOLEAN
+HANDLE
+DUPLICATE_CLOSE_SOURCE
+
+//// Restart Manager ////
+RM_PROCESS_INFO
+
+//// PInvoke ////
+CloseHandle
+DuplicateHandle
+GetFinalPathNameByHandle
+IsWow64Process
+NtQueryObject
+NtQueryInformationProcess
+NtQuerySystemInformation
+OpenProcess
+QueryFullProcessImageName
+ReadProcessMemory
+RmEndSession
+RmGetList
+RmRegisterResources
+RmStartSession
+
+//// System.Threading ////
+PEB
+ProcessBasicInformation
+PROCESS_BASIC_INFORMATION
+PROCESSINFOCLASS
+PROCESS_QUERY_LIMITED_INFORMATION
+PROCESS_VM_READ
+
+//// System.WindowsProgramming ////
+PUBLIC_OBJECT_TYPE_INFORMATION
+
