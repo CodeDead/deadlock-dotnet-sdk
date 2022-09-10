@@ -62,44 +62,47 @@ internal static class NativeMethods
                     uint lpdwRebootReasons = RmRebootReasonNone;
 
                     string[] resources = { path };
-                    res = RmRegisterResources(handle, (uint)resources.Length, resources, 0, null, 0, null);
-
-                    if (res != 0)
+                    using (PWSTR pResources = (char*)Marshal.StringToHGlobalUni(path))
                     {
-                        throw new RegisterResourceException();
-                    }
+                        res = RmRegisterResources(handle, new Span<PWSTR>(new PWSTR[] { pResources }), rgApplications: new(), new());
 
-                    res = RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, ref lpdwRebootReasons);
-
-                    if (res == errorMoreData)
-                    {
-                        RM_PROCESS_INFO[] processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
-                        pnProcInfo = pnProcInfoNeeded;
-
-                        res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, processInfo, ref lpdwRebootReasons);
-                        if (res == 0)
+                        if (res != 0)
                         {
-                            processes = new List<Process>((int)pnProcInfo);
+                            throw new RegisterResourceException();
+                        }
 
-                            for (int i = 0; i < pnProcInfo; i++)
+                        res = RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, ref lpdwRebootReasons);
+
+                        if (res == errorMoreData)
+                        {
+                            RM_PROCESS_INFO[] processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
+                            pnProcInfo = pnProcInfoNeeded;
+
+                            res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, processInfo, ref lpdwRebootReasons);
+                            if (res == 0)
                             {
-                                try
+                                processes = new List<Process>((int)pnProcInfo);
+
+                                for (int i = 0; i < pnProcInfo; i++)
                                 {
-                                    processes.Add(Process.GetProcessById(processInfo[i].Process.dwProcessId));
-                                }
-                                catch (ArgumentException) when (!rethrowExceptions)
-                                {
+                                    try
+                                    {
+                                        processes.Add(Process.GetProcessById(processInfo[i].Process.dwProcessId));
+                                    }
+                                    catch (ArgumentException) when (!rethrowExceptions)
+                                    {
+                                    }
                                 }
                             }
+                            else
+                            {
+                                throw new RmListException();
+                            }
                         }
-                        else
+                        else if (res != 0)
                         {
-                            throw new RmListException();
+                            throw new UnauthorizedAccessException();
                         }
-                    }
-                    else if (res != 0)
-                    {
-                        throw new UnauthorizedAccessException();
                     }
                 }
                 finally
