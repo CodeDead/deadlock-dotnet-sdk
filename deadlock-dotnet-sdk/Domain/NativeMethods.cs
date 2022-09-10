@@ -123,6 +123,63 @@ internal static class NativeMethods
             }
         }
     }
+
+    /// <summary>
+    /// A wrapper for QueryFullProcessImageName
+    /// </summary>
+    /// <param name="processId">
+    /// The identifier of the local process to be opened.
+    /// If the specified process is the System Idle Process(0x00000000),
+    ///  the function fails and the last error code is ERROR_INVALID_PARAMETER.
+    /// If the specified process is the System process or one of the Client Server Run-Time Subsystem(CSRSS) processes,
+    ///  this function fails and the last error code is ERROR_ACCESS_DENIED because their access restrictions prevent user-level code from opening them.
+    /// </param>
+    /// <param name="hProcess">A SafeProcessHandle opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
+    /// <returns>The path to the executable image.</returns>
+    /// <exception cref="Exception">Call to <see cref="OpenProcess(uint, bool, uint)"/> or <see cref="QueryFullProcessImageName(SafeProcessHandle, uint, out string, ref uint)"/> failed.</exception>
+    private unsafe static string GetFullProcessImageName(SafeProcessHandle hProcess)
+    {
+        if (hProcess.IsInvalid)
+        {
+            throw new ArgumentException("The process handle is invalid", nameof(hProcess));
+        }
+
+        uint size = 260 + 1;
+        uint bufferLength = size;
+        IntPtr ptr = Marshal.AllocHGlobal((int)bufferLength);
+        PWSTR buffer = new PWSTR((char*)ptr);
+
+        if (!QueryFullProcessImageName(
+            hProcess: hProcess,
+            dwFlags: PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
+            lpExeName: buffer,
+            lpdwSize: ref size))
+        {
+            if (bufferLength < size)
+            {
+                ptr = Marshal.ReAllocHGlobal(ptr, (IntPtr)size);
+                buffer = new((char*)ptr);
+                _ = QueryFullProcessImageName(
+                    hProcess,
+                    PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
+                    buffer,
+                    ref size);
+            }
+            else
+            {
+                var err = Marshal.GetLastPInvokeError();
+                hProcess.Close();
+                throw new Win32Exception(err);
+            }
+        }
+
+        // this is horribly inefficient. How many times are we creating new references and/or buffers?
+        hProcess.Close();
+        string retVal = buffer.ToString();
+        Marshal.FreeHGlobal((IntPtr)buffer.Value);
+        return retVal;
+    }
+
     #endregion Methods
 
     #region Structs
