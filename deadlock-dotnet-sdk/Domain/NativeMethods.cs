@@ -41,67 +41,72 @@ internal static class NativeMethods
     /// <returns>A collection of processes that are locking a file</returns>
     internal static IEnumerable<Process> FindLockingProcesses(string path, bool rethrowExceptions)
     {
-        string key = Guid.NewGuid().ToString();
-        List<Process> processes = new();
-
-        int res = RmStartSession(out var handle, 0, key);
-        if (res != 0)
+        unsafe
         {
-            throw new StartSessionException();
-        }
-
-        try
-        {
-            const int errorMoreData = 234;
-            uint pnProcInfo = 0;
-            uint lpdwRebootReasons = RmRebootReasonNone;
-
-            string[] resources = { path };
-            res = RmRegisterResources(handle, (uint)resources.Length, resources, 0, null, 0, null);
-
-            if (res != 0)
+            using (PWSTR key = new((char*)Marshal.StringToHGlobalUni(Guid.NewGuid().ToString())))
             {
-                throw new RegisterResourceException();
-            }
+                List<Process> processes = new();
 
-            res = RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, ref lpdwRebootReasons);
-
-            if (res == errorMoreData)
-            {
-                RM_PROCESS_INFO[] processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
-                pnProcInfo = pnProcInfoNeeded;
-
-                res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, processInfo, ref lpdwRebootReasons);
-                if (res == 0)
+                int res = RmStartSession(out var handle, 0, key);
+                if (res != 0)
                 {
-                    processes = new List<Process>((int)pnProcInfo);
+                    throw new StartSessionException();
+                }
 
-                    for (int i = 0; i < pnProcInfo; i++)
+                try
+                {
+                    const int errorMoreData = 234;
+                    uint pnProcInfo = 0;
+                    uint lpdwRebootReasons = RmRebootReasonNone;
+
+                    string[] resources = { path };
+                    res = RmRegisterResources(handle, (uint)resources.Length, resources, 0, null, 0, null);
+
+                    if (res != 0)
                     {
-                        try
+                        throw new RegisterResourceException();
+                    }
+
+                    res = RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, ref lpdwRebootReasons);
+
+                    if (res == errorMoreData)
+                    {
+                        RM_PROCESS_INFO[] processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
+                        pnProcInfo = pnProcInfoNeeded;
+
+                        res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, processInfo, ref lpdwRebootReasons);
+                        if (res == 0)
                         {
-                            processes.Add(Process.GetProcessById(processInfo[i].Process.dwProcessId));
+                            processes = new List<Process>((int)pnProcInfo);
+
+                            for (int i = 0; i < pnProcInfo; i++)
+                            {
+                                try
+                                {
+                                    processes.Add(Process.GetProcessById(processInfo[i].Process.dwProcessId));
+                                }
+                                catch (ArgumentException) when (!rethrowExceptions)
+                                {
+                                }
+                            }
                         }
-                        catch (ArgumentException) when (!rethrowExceptions)
+                        else
                         {
+                            throw new RmListException();
                         }
                     }
+                    else if (res != 0)
+                    {
+                        throw new UnauthorizedAccessException();
+                    }
                 }
-                else
+                finally
                 {
-                    throw new RmListException();
+                    _ = RmEndSession(handle);
                 }
-            }
-            else if (res != 0)
-            {
-                throw new UnauthorizedAccessException();
-            }
-        }
-        finally
-        {
-            _ = RmEndSession(handle);
-        }
 
-        return processes;
+                return processes;
+            }
+        }
     }
 }
