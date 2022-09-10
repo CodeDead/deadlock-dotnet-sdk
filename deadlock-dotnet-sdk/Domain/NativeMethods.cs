@@ -30,60 +30,6 @@ internal static class NativeMethods
     #region Variables
 
     private const int RmRebootReasonNone = 0;
-    private const int CchRmMaxAppName = 255;
-    private const int CchRmMaxSvcName = 63;
-
-    #endregion
-
-    #region Enum_Struct
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RmUniqueProcess
-    {
-        internal readonly int dwProcessId;
-        private readonly System.Runtime.InteropServices.ComTypes.FILETIME ProcessStartTime;
-    }
-
-    private enum RmAppType
-    {
-        // ReSharper disable once UnusedMember.Local
-        RmUnknownApp = 0,
-
-        // ReSharper disable once UnusedMember.Local
-        RmMainWindow = 1,
-
-        // ReSharper disable once UnusedMember.Local
-        RmOtherWindow = 2,
-
-        // ReSharper disable once UnusedMember.Local
-        RmService = 3,
-
-        // ReSharper disable once UnusedMember.Local
-        RmExplorer = 4,
-
-        // ReSharper disable once UnusedMember.Local
-        RmConsole = 5,
-
-        // ReSharper disable once UnusedMember.Local
-        RmCritical = 1000
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct RmProcessInfo
-    {
-        internal RmUniqueProcess Process;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = CchRmMaxAppName + 1)]
-        private readonly string strAppName;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = CchRmMaxSvcName + 1)]
-        private readonly string strServiceShortName;
-
-        private readonly RmAppType ApplicationType;
-        private readonly uint AppStatus;
-        private readonly uint TSSessionId;
-        [MarshalAs(UnmanagedType.Bool)] private readonly bool bRestartable;
-    }
 
     #endregion
 
@@ -122,7 +68,7 @@ internal static class NativeMethods
 
             if (res == errorMoreData)
             {
-                RmProcessInfo[] processInfo = new RmProcessInfo[pnProcInfoNeeded];
+                RM_PROCESS_INFO[] processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
                 pnProcInfo = pnProcInfoNeeded;
 
                 res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, processInfo, ref lpdwRebootReasons);
