@@ -31,7 +31,9 @@ internal static class NativeMethods
 
     private const int RmRebootReasonNone = 0;
 
-    #endregion
+    #endregion Variables
+
+    #region Methods
 
     /// <summary>
     /// Find the processes that are locking a file
@@ -109,4 +111,10 @@ internal static class NativeMethods
             }
         }
     }
+    #endregion Methods
+
+    #region Structs
+    #endregion Structs
+    #region Classes
+    #endregion Classes
 }
