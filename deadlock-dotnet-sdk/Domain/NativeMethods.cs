@@ -125,6 +125,81 @@ internal static class NativeMethods
     }
 
     /// <summary>
+    /// Get a Span of <see cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX"/> via <see cref="NtQuerySystemInformation"/>
+    /// </summary>
+    /// <remarks>Heavily influenced by ProcessHacker/SystemInformer</remarks>
+    private unsafe static Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX> GetSystemHandleInfoEx()
+    {
+        const uint STATUS_INFO_LENGTH_MISMATCH = 0xC0000004;
+        const uint PH_LARGE_BUFFER_SIZE = 256 * 1024 * 1024; // 256 Mebibytes
+        const uint STATUS_INSUFFICIENT_RESOURCES = 0xC000009A;
+        uint systemInformationLength = (uint)sizeof(SYSTEM_HANDLE_INFORMATION_EX);
+        SYSTEM_HANDLE_INFORMATION_EX* pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.AllocHGlobal(sizeof(SYSTEM_HANDLE_INFORMATION_EX));
+        uint returnLength = 0;
+
+        NTSTATUS status = NtQuerySystemInformation(
+            SystemInformationClass: SYSTEM_INFORMATION_CLASS.SystemExtendedHandleInformation,
+            SystemInformation: pSysInfoBuffer,
+            SystemInformationLength: systemInformationLength,
+            ReturnLength: ref returnLength
+            );
+
+        for (uint attempts = 0; status == STATUS_INFO_LENGTH_MISMATCH && attempts < 10; attempts++)
+        {
+            systemInformationLength = returnLength;
+            pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.ReAllocHGlobal((IntPtr)pSysInfoBuffer, (IntPtr)systemInformationLength);
+
+            status = NtQuerySystemInformation(
+                SYSTEM_INFORMATION_CLASS.SystemExtendedHandleInformation,
+                pSysInfoBuffer,
+                systemInformationLength,
+                ref returnLength
+                );
+        }
+
+        if (!status.IsSuccessful)
+        {
+            // Fall back to using the previous code that we've used since Windows XP (dmex)
+            systemInformationLength = 0x10000;
+            Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
+            pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.ReAllocHGlobal((IntPtr)pSysInfoBuffer, (IntPtr)systemInformationLength);
+
+            while ((status = NtQuerySystemInformation(
+                SystemInformationClass: SYSTEM_INFORMATION_CLASS.SystemExtendedHandleInformation,
+                SystemInformation: pSysInfoBuffer,
+                SystemInformationLength: systemInformationLength,
+                ReturnLength: ref returnLength
+                )) == STATUS_INFO_LENGTH_MISMATCH)
+            {
+                Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
+                systemInformationLength *= 2;
+
+                // Fail if we're resizing the buffer to something very large.
+                if (systemInformationLength > PH_LARGE_BUFFER_SIZE)
+                {
+                    throw new Win32Exception(unchecked((int)STATUS_INSUFFICIENT_RESOURCES));
+                }
+
+                pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.AllocHGlobal((int)systemInformationLength);
+            }
+        }
+
+        if (!status.IsSuccessful)
+        {
+            Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
+            Marshal.FreeHGlobal((IntPtr)returnLength);
+            throw new Win32Exception((int)status);
+        }
+
+        SYSTEM_HANDLE_INFORMATION_EX retVal = *pSysInfoBuffer;
+
+        Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
+        Marshal.FreeHGlobal((IntPtr)returnLength);
+
+        return retVal.AsSpan();
+    }
+
+    /// <summary>
     /// A wrapper for QueryFullProcessImageName
     /// </summary>
     /// <param name="processId">
