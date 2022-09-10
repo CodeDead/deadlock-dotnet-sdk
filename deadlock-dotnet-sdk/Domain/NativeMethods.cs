@@ -484,5 +484,100 @@ internal static class NativeMethods
         }
     }
 
+    public class SafeFileHandleEx : SafeHandleEx
+    {
+        internal SafeFileHandleEx(SafeHandleEx safeHandleEx)
+        {
+            sysHandleEx = safeHandleEx.SysHandleEx;
+            Init();
+            InitFile();
+        }
+
+        public SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx, bool ownsHandle) : base(newSysHandleEx: sysHandleEx, ownsHandle: ownsHandle)
+        {
+            base.sysHandleEx = sysHandleEx;
+            Init();
+            InitFile();
+        }
+
+        private void InitFile()
+        {
+            bool? isFileHandle;
+            try
+            {
+                isFileHandle = sysHandleEx.IsFileHandle();
+            }
+            catch (Exception)
+            {
+                isFileHandle = null;
+                // IsFileHandle failed
+            }
+            if (isFileHandle == true)
+            {
+                FullPath = TryGetFinalPath();
+                if (FullPath != null)
+                {
+                    Name = Path.GetFileName(FullPath);
+                    IsDirectory = (File.GetAttributes(FullPath) & FileAttributes.Directory) == FileAttributes.Directory;
+                }
+            }
+            else
+            {
+                throw new InvalidCastException("Cannot cast non-file handle to file handle!");
+            }
+        }
+
+        public string? FullPath { get; private set; }
+        public string? Name { get; private set; }
+        public bool? IsDirectory { get; private set; }
+
+        /// <summary>
+        /// Try to get the absolute path of the file. Traverses filesystem links (e.g. symbolic, junction) to get the 'real' path.
+        /// </summary>
+        /// <returns>If successful, returns a path string formatted as 'X:\dir\file.ext' or 'X:\dir'</returns>
+        /// <exception cref="FileNotFoundException(string, string)">The path '{fullName}' was not found when querying a file handle.</exception>
+        /// <exception cref="OutOfMemoryException(string)">Failed to query path from file handle. Insufficient memory to complete the operation.</exception>
+        /// <exception cref="ArgumentException">Failed to query path from file handle. Invalid flags were specified for dwFlags.</exception>
+        private unsafe string TryGetFinalPath()
+        {
+            /// Return the normalized drive name. This is the default.
+            uint bufLength = (uint)short.MaxValue;
+            var buffer = Marshal.AllocHGlobal((int)bufLength);
+            PWSTR fullName = new((char*)buffer);
+            uint length = GetFinalPathNameByHandle(SysHandleEx.ToSafeFileHandle(), fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+
+            if (length != 0)
+            {
+                while (length > bufLength)
+                {
+                    // buffer was too small. Reallocate buffer with size matched 'length' and try again
+                    buffer = Marshal.ReAllocHGlobal(buffer, (IntPtr)length);
+                    fullName = new((char*)buffer);
+
+                    bufLength = GetFinalPathNameByHandle(SysHandleEx.ToSafeFileHandle(), fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+                }
+                return fullName.ToString();
+            }
+            else
+            {
+                int error = Marshal.GetLastWin32Error();
+                const int ERROR_PATH_NOT_FOUND = 3;
+                const int ERROR_NOT_ENOUGH_MEMORY = 8;
+                const int ERROR_INVALID_PARAMETER = 87; // 0x57
+
+                /* Hold up. Let's free our memory before throwing exceptions. */
+                Marshal.FreeHGlobal(buffer);
+
+                throw error switch
+                {
+                    ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{fullName}' was not found when querying a file handle.", fileName: fullName.ToString()), // Removable storage, deleted item, network shares, et cetera
+                    ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException("Failed to query path from file handle. Insufficient memory to complete the operation."), // unlikely, but possible if system has little free memory
+                    ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags."), // possible only if FILE_NAME_NORMALIZED (0) is invalid
+                    _ => new Exception($"An undocumented error ({error}) was returned when querying a file handle for its path."),
+                };
+            }
+        }
+    }
+
     #endregion Classes
 }
