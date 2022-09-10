@@ -1,51 +1,42 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <TargetFramework>net6.0-windows</TargetFramework>
-        <RootNamespace>deadlock_dotnet_sdk</RootNamespace>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <Title>deadlock-dotnet-sdk</Title>
-        <Description>DeadLock SDK that allows developers to unlock files that cannot be removed on Windows</Description>
-        <Copyright>Copyright © 2022 CodeDead</Copyright>
-        <PackageProjectUrl>https://github.com/CodeDead/deadlock-dotnet-sdk</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/CodeDead/deadlock-dotnet-sdk</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-        <PackageTags>file;deadlock;codedead;handle;file-handle;</PackageTags>
-        <Authors>CodeDead</Authors>
-        <Company>CodeDead</Company>
-        <PackageIcon>lock-fill.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
-        <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <AssemblyVersion>1.0.1.0</AssemblyVersion>
-        <FileVersion>1.0.1.0</FileVersion>
-        <Version>1.0.1</Version>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks><!-- required for some win32 interop involving pointers and fixed arrays/buffers -->
-        <LangVersion>9</LangVersion><!-- Necessary for some of CsWin32's codegen when using nint, nuint, function pointers -->
-    </PropertyGroup>
-
-    <ItemGroup>
-        <None Include="..\lock-fill.png">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
-        <None Include="..\README.md">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
-        <None Include="..\LICENSE">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
-    </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.2.10-beta">
-        <!-- Removing IncludeAssets allows us to "get better code generation by allowing nuget to bring in the System.Memory package as a transitive dependency." -->
-        <!-- <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>  -->
-        <PrivateAssets>all</PrivateAssets>
-      </PackageReference>
-    </ItemGroup>
-
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <RootNamespace>deadlock_dotnet_sdk</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Title>deadlock-dotnet-sdk</Title>
+    <Description>DeadLock SDK that allows developers to unlock files that cannot be removed on Windows</Description>
+    <Copyright>Copyright © 2022 CodeDead</Copyright>
+    <PackageProjectUrl>https://github.com/CodeDead/deadlock-dotnet-sdk</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/CodeDead/deadlock-dotnet-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>file;deadlock;codedead;handle;file-handle;</PackageTags>
+    <Authors>CodeDead</Authors>
+    <Company>CodeDead</Company>
+    <PackageIcon>lock-fill.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
+    <Version>1.0.1</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\lock-fill.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.2.*-*" />
+  </ItemGroup>
 </Project>
