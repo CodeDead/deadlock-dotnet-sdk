@@ -49,7 +49,7 @@ internal static class NativeMethods
             {
                 List<Process> processes = new();
 
-                int res = RmStartSession(out var handle, 0, key);
+                uint res = RmStartSession(out var handle, 0, key);
                 if (res != 0)
                 {
                     throw new StartSessionException();
