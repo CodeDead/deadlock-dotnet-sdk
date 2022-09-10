@@ -87,24 +87,6 @@ internal static class NativeMethods
 
     #endregion
 
-    #region DllImport
-
-    [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
-    private static extern int RmRegisterResources(uint pSessionHandle, uint nFiles, string[] rgsFilenames,
-        uint nApplications, [In] RmUniqueProcess[] rgApplications, uint nServices, string[] rgsServiceNames);
-
-    [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
-    private static extern int RmStartSession(out uint pSessionHandle, int dwSessionFlags, string strSessionKey);
-
-    [DllImport("rstrtmgr.dll")]
-    private static extern int RmEndSession(uint pSessionHandle);
-
-    [DllImport("rstrtmgr.dll")]
-    private static extern int RmGetList(uint dwSessionHandle, out uint pnProcInfoNeeded, ref uint pnProcInfo,
-        [In, Out] RmProcessInfo[] rgAffectedApps, ref uint lpdwRebootReasons);
-
-    #endregion
-
     /// <summary>
     /// Find the processes that are locking a file
     /// </summary>
