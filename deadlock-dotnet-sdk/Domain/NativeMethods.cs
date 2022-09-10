@@ -125,6 +125,35 @@ internal static class NativeMethods
     }
 
     /// <summary>
+    /// Query the systems open handles, try to filter them to just files, and try to filter those files to just ones that contain the path query. 
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="rethrowExceptions"></param>
+    /// <returns>A List of SafeFileHandle objects.</returns>
+    /// <remarks>This might be arduously slow...</remarks>
+    public static List<SafeFileHandleEx> FindLockingHandles(string? path = null)
+    {
+        Process.EnterDebugMode(); // just in case
+
+        List<SafeHandleEx> handles = GetSystemHandleInfoEx().ToArray().Cast<SafeHandleEx>().ToList();
+        List<SafeFileHandleEx> fileHandles = new();
+        foreach (var handle in handles)
+        {
+            var fileHandle = new SafeFileHandleEx(handle);
+            // Do we need more path sanitation checks?
+            if (!string.IsNullOrWhiteSpace(path) && (string.IsNullOrEmpty(fileHandle.FullPath) || fileHandle.FullPath.Contains(path)))
+            {
+                // we also add null-path handles bc we can assume we failed to query their paths. If someone wants to filter them out, they can.
+                fileHandles.Add(fileHandle);
+            }
+            // else, the file handle's path is fulfilled, but does not match our query
+        }
+
+        fileHandles.Sort((a, b) => a.ProcessId.CompareTo(b.ProcessId));
+        return fileHandles;
+    }
+
+    /// <summary>
     /// Get a Span of <see cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX"/> via <see cref="NtQuerySystemInformation"/>
     /// </summary>
     /// <remarks>Heavily influenced by ProcessHacker/SystemInformer</remarks>
