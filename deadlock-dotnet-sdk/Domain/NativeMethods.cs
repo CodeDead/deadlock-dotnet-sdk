@@ -154,15 +154,20 @@ internal static class NativeMethods
                         {
                             processes.Add(Process.GetProcessById(processInfo[i].Process.dwProcessId));
                         }
-                        catch (ArgumentException)
+                        catch (ArgumentException) when (!rethrowExceptions)
                         {
-                            if (rethrowExceptions) throw;
                         }
                     }
                 }
-                else throw new RmListException();
+                else
+                {
+                    throw new RmListException();
+                }
             }
-            else if (res != 0) throw new UnauthorizedAccessException();
+            else if (res != 0)
+            {
+                throw new UnauthorizedAccessException();
+            }
         }
         finally
         {
