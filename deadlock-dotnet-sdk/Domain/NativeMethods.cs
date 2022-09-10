@@ -68,17 +68,21 @@ internal static class NativeMethods
 
                         if (res != 0)
                         {
+                            pResources.Dispose();
                             throw new RegisterResourceException();
                         }
 
-                        res = RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, ref lpdwRebootReasons);
+                        res = RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, out lpdwRebootReasons);
 
                         if (res == errorMoreData)
                         {
-                            RM_PROCESS_INFO[] processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
+                            ReadOnlySpan<RM_PROCESS_INFO> processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
                             pnProcInfo = pnProcInfoNeeded;
 
-                            res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, processInfo, ref lpdwRebootReasons);
+                            fixed (RM_PROCESS_INFO* pProcessInfo = processInfo)
+                            {
+                                res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, pProcessInfo, out lpdwRebootReasons);
+                            }
                             if (res == 0)
                             {
                                 processes = new List<Process>((int)pnProcInfo);
@@ -87,20 +91,24 @@ internal static class NativeMethods
                                 {
                                     try
                                     {
-                                        processes.Add(Process.GetProcessById(processInfo[i].Process.dwProcessId));
+                                        processes.Add(Process.GetProcessById((int)processInfo[i].Process.dwProcessId));
                                     }
-                                    catch (ArgumentException) when (!rethrowExceptions)
+                                    catch (ArgumentException)
                                     {
+                                        pResources.Dispose();
+                                        if (rethrowExceptions) throw;
                                     }
                                 }
                             }
                             else
                             {
+                                pResources.Dispose();
                                 throw new RmListException();
                             }
                         }
                         else if (res != 0)
                         {
+                            pResources.Dispose();
                             throw new UnauthorizedAccessException();
                         }
                     }
@@ -108,6 +116,7 @@ internal static class NativeMethods
                 finally
                 {
                     _ = RmEndSession(handle);
+                    key.Dispose();
                 }
 
                 return processes;
