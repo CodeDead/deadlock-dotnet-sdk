@@ -47,10 +47,12 @@ namespace Windows.Win32
 
         internal unsafe readonly partial struct PWSTR : IDisposable
         {
-            public void Dispose()
-            {
-                Marshal.FreeHGlobal((IntPtr)Value);
-            }
+            /// <summary>
+            /// Free the PWSTR's memory with Marshal.FreeHGlobal(IntPtr)
+            /// </summary>
+            public void Dispose() => Marshal.FreeHGlobal((IntPtr)Value);
+
+            public static implicit operator PWSTR(IntPtr v) => new((char*)v);
         }
 
         internal partial struct UNICODE_STRING
