@@ -687,14 +687,14 @@ internal static class NativeMethods
         /// <returns>If successful, returns a path string formatted as 'X:\dir\file.ext' or 'X:\dir'</returns>
         /// <exception cref="FileNotFoundException(string, string)">The path '{fullName}' was not found when querying a file handle.</exception>
         /// <exception cref="OutOfMemoryException(string)">Failed to query path from file handle. Insufficient memory to complete the operation.</exception>
-        /// <exception cref="ArgumentException">Failed to query path from file handle. Invalid flags were specified for dwFlags.</exception>
+        /// <exception cref="ArgumentException(string)">Failed to query path from file handle. Invalid flags were specified for dwFlags.</exception>
         private unsafe string TryGetFinalPath()
         {
             /// Return the normalized drive name. This is the default.
             uint bufLength = (uint)short.MaxValue;
             var buffer = Marshal.AllocHGlobal((int)bufLength);
             PWSTR fullName = new((char*)buffer);
-            uint length = GetFinalPathNameByHandle(SysHandleEx.ToSafeFileHandle(), fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+            uint length = GetFinalPathNameByHandle(this, fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
 
             if (length != 0)
             {
