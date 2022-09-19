@@ -1,12 +1,12 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 using Windows.Win32.Foundation;
 using Windows.Win32.Security;
 using Windows.Win32.System.Threading;
 using static Windows.Win32.PInvoke;
-
 
 namespace deadlock_dotnet_sdk.Domain;
 
@@ -265,4 +265,9 @@ internal class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         Close();
         return IsClosed;
     }
+
+    /// <summary>
+    /// Serialize the current instance to JSON-formatted text
+    /// </summary>
+    public override string? ToString() => JsonSerializer.Serialize(this, new JsonSerializerOptions() { WriteIndented = true });
 }
