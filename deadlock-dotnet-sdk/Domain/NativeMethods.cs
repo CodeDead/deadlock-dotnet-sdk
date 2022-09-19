@@ -258,65 +258,7 @@ internal static class NativeMethods
         return retVal.AsSpan();
     }
 
-    /// <summary>
-    /// A wrapper for QueryFullProcessImageName
-    /// </summary>
-    /// <param name="processId">
-    /// The identifier of the local process to be opened.
-    /// If the specified process is the System Idle Process(0x00000000),
-    ///  the function fails and the last error code is ERROR_INVALID_PARAMETER.
-    /// If the specified process is the System process or one of the Client Server Run-Time Subsystem(CSRSS) processes,
-    ///  this function fails and the last error code is ERROR_ACCESS_DENIED because their access restrictions prevent user-level code from opening them.
-    /// </param>
-    /// <param name="hProcess">A SafeProcessHandle opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
-    /// <returns>The path to the executable image.</returns>
-    /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
-    /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
-    /// //todo: move into SafeHandleEx
-    private unsafe static string GetFullProcessImageName(SafeProcessHandle hProcess)
-    {
-        if (hProcess.IsInvalid)
-            throw new ArgumentException("The process handle is invalid", nameof(hProcess));
 
-        uint size = 260 + 1;
-        uint bufferLength = size;
-        string retVal = "";
-
-        using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufferLength));
-        if (QueryFullProcessImageName(
-            hProcess: hProcess,
-            dwFlags: PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-            lpExeName: buffer,
-            lpdwSize: ref size))
-        {
-            retVal = buffer.ToString();
-        }
-        else if (bufferLength < size)
-        {
-            using PWSTR newBuffer = Marshal.ReAllocHGlobal((IntPtr)buffer.Value, (IntPtr)size);
-            if (QueryFullProcessImageName(
-                hProcess,
-                PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-                newBuffer,
-                ref size))
-            {
-                retVal = newBuffer.ToString();
-            }
-            else
-            {
-                // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
-                throw new Win32Exception();
-            }
-        }
-        else
-        {
-            // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
-            throw new Win32Exception();
-        }
-
-        // PWSTR instances are freed by their using blocks' finalizers
-        return retVal;
-    }
 
     #endregion Methods
 
@@ -632,6 +574,65 @@ internal static class NativeMethods
             {
                 throw new Exception("NtQueryInformationProcess failed to query the process's 'PROCESS_BASIC_INFORMATION'");
             }
+        }
+
+        /// <summary>
+        /// A wrapper for QueryFullProcessImageName
+        /// </summary>
+        /// <param name="processId">
+        /// The identifier of the local process to be opened.
+        /// If the specified process is the System Idle Process(0x00000000),
+        ///  the function fails and the last error code is ERROR_INVALID_PARAMETER.
+        /// If the specified process is the System process or one of the Client Server Run-Time Subsystem(CSRSS) processes,
+        ///  this function fails and the last error code is ERROR_ACCESS_DENIED because their access restrictions prevent user-level code from opening them.
+        /// </param>
+        /// <param name="hProcess">A SafeProcessHandle opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
+        /// <returns>The path to the executable image.</returns>
+        /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
+        /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
+        private unsafe static string GetFullProcessImageName(SafeProcessHandle hProcess)
+        {
+            if (hProcess.IsInvalid)
+                throw new ArgumentException("The process handle is invalid", nameof(hProcess));
+
+            uint size = 260 + 1;
+            uint bufferLength = size;
+            string retVal = "";
+
+            using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufferLength));
+            if (QueryFullProcessImageName(
+                hProcess: hProcess,
+                dwFlags: PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
+                lpExeName: buffer,
+                lpdwSize: ref size))
+            {
+                retVal = buffer.ToString();
+            }
+            else if (bufferLength < size)
+            {
+                using PWSTR newBuffer = Marshal.ReAllocHGlobal((IntPtr)buffer.Value, (IntPtr)size);
+                if (QueryFullProcessImageName(
+                    hProcess,
+                    PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
+                    newBuffer,
+                    ref size))
+                {
+                    retVal = newBuffer.ToString();
+                }
+                else
+                {
+                    // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
+                    throw new Win32Exception();
+                }
+            }
+            else
+            {
+                // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
+                throw new Win32Exception();
+            }
+
+            // PWSTR instances are freed by their using blocks' finalizers
+            return retVal;
         }
 
         protected override bool ReleaseHandle()
