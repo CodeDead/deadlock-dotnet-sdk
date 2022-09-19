@@ -38,6 +38,11 @@ namespace Windows.Win32
         internal readonly partial struct NTSTATUS
         {
             public bool IsSuccessful => SeverityCode == Severity.Success;
+
+            public NTStatusException GetNTStatusException() => new(this);
+
+            public static implicit operator NTSTATUS_plus(NTSTATUS v) => new(v.Value);
+            public static implicit operator NTSTATUS(NTSTATUS_plus v) => new(v.AsInt32);
         }
 
         internal unsafe readonly partial struct PWSTR : IDisposable
