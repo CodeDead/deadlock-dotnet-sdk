@@ -125,32 +125,63 @@ internal static class NativeMethods
     }
 
     /// <summary>
-    /// Query the systems open handles, try to filter them to just files, and try to filter those files to just ones that contain the path query. 
+    ///     Query the system's open handles;
+    ///     Try to filter them to just files, optionally including handles for non-File and unidentified object types;
+    ///     Filter "File" handles to only those whose full paths contain the query string.
     /// </summary>
-    /// <param name="path"></param>
-    /// <param name="rethrowExceptions"></param>
-    /// <returns>A List of SafeFileHandle objects.</returns>
+    /// <param name="query">
+    ///     When a query string is passed to this method, all "File"
+    ///     object handles will be filtered for only those whose full
+    ///     paths contain this query string.
+    /// </param>
+    /// <param name="filter">
+    ///     By default, this method only returns handles for objects
+    ///     successfully identified as a file/directory ("File").
+    ///     <see cref="Filter.NonFiles"/> and <see cref="Filter.TypeQueryFailed"/>
+    /// </param>
+    /// <returns>
+    ///     A list of SafeFileHandleEx objects.
+    ///     When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
+    /// </returns>
     /// <remarks>This might be arduously slow...</remarks>
-    internal static List<SafeFileHandleEx> FindLockingHandles(string? path = null)
+    // TODO: Perhaps we should allow a new query without re-calling GetSystemHandleInfoEx().
+    internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, Filter filter = Filter.FilesOnly)
     {
         Process.EnterDebugMode(); // just in case
 
-        List<SafeHandleEx> handles = GetSystemHandleInfoEx().ToArray().Cast<SafeHandleEx>().ToList();
-        List<SafeFileHandleEx> fileHandles = new();
-        foreach (var handle in handles)
-        {
-            var fileHandle = new SafeFileHandleEx(handle);
-            // Do we need more path sanitation checks?
-            if (!string.IsNullOrWhiteSpace(path) && (string.IsNullOrEmpty(fileHandle.FullPath) || fileHandle.FullPath.Contains(path)))
-            {
-                // we also add null-path handles bc we can assume we failed to query their paths. If someone wants to filter them out, they can.
-                fileHandles.Add(fileHandle);
-            }
-            // else, the file handle's path is fulfilled, but does not match our query
-        }
+        List<SafeFileHandleEx>? handles = GetSystemHandleInfoEx().ToArray().Cast<SafeFileHandleEx>().ToList();
+        handles.RemoveAll(item => Discard(h: item));
+        handles.Sort((a, b) => a.ProcessId.CompareTo(b.ProcessId));
+        return handles;
 
-        fileHandles.Sort((a, b) => a.ProcessId.CompareTo(b.ProcessId));
-        return fileHandles;
+        bool Discard(SafeFileHandleEx h)
+        {
+            if (h.HandleObjectType is not null)
+            {
+                /* Query for object type succeeded and the type is NOT File */
+                if (h.HandleObjectType != "File")
+                {
+                    return !filter.HasFlag(Filter.NonFiles); // When requested, keep non-File object handle. Else, discard.
+                }
+                // Discard handle if Query and file's path are not null and file's path does not contain query */
+                return (query is not null) && (h.FileFullPath is not null) && (!h.FileFullPath.Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)));
+            }
+            else
+            {
+                return !filter.HasFlag(Filter.TypeQueryFailed); // When requested, keep handle if the object type query failed. Else, discard.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Filters for <see cref="FindLockingHandles(string?, Filter)"/>
+    /// </summary>
+    [Flags]
+    internal enum Filter
+    {
+        FilesOnly = 0,
+        NonFiles = 1,
+        TypeQueryFailed = 2
     }
 
     /// <summary>
