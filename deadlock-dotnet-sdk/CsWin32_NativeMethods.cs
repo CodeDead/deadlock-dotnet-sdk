@@ -180,7 +180,7 @@ namespace Windows.Win32
 
             public bool Equals(PPS_POST_PROCESS_INIT_ROUTINE other) => Value == other.Value;
 
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
                 => obj is PPS_POST_PROCESS_INIT_ROUTINE pPS_POST_PROCESS_INIT_ROUTINE && Equals(pPS_POST_PROCESS_INIT_ROUTINE);
         }
 
