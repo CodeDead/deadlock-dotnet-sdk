@@ -49,6 +49,8 @@ internal static class NativeMethods
             {
                 List<Process> processes = new();
 
+                // todo: new RmStartSession overload in CsWin32_NativeMethods.cs which can throw a StartSessionException derived from System.ComponentModel.Win32Exception
+                // Why? <c>new Win32Exception()</c> will get the last PInvoke error code in addition to the system's message for that Win32ErrorCode.
                 uint res = RmStartSession(out var handle, 0, key);
                 if (res != 0)
                 {
@@ -62,13 +64,14 @@ internal static class NativeMethods
                     uint lpdwRebootReasons = RmRebootReasonNone;
 
                     string[] resources = { path };
+
+                    // "using" blocks have hidden "finally" blocks which are executed before exceptions leave this context.
                     using (PWSTR pResources = (char*)Marshal.StringToHGlobalUni(path))
                     {
                         res = RmRegisterResources(handle, new Span<PWSTR>(new PWSTR[] { pResources }), rgApplications: new(), new());
 
                         if (res != 0)
                         {
-                            pResources.Dispose();
                             throw new RegisterResourceException();
                         }
 
@@ -95,20 +98,17 @@ internal static class NativeMethods
                                     }
                                     catch (ArgumentException)
                                     {
-                                        pResources.Dispose();
                                         if (rethrowExceptions) throw;
                                     }
                                 }
                             }
                             else
                             {
-                                pResources.Dispose();
                                 throw new RmListException();
                             }
                         }
                         else if (res != 0)
                         {
-                            pResources.Dispose();
                             throw new UnauthorizedAccessException();
                         }
                     }
@@ -116,7 +116,6 @@ internal static class NativeMethods
                 finally
                 {
                     _ = RmEndSession(handle);
-                    key.Dispose();
                 }
 
                 return processes;
