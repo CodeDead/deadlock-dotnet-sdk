@@ -579,13 +579,6 @@ internal static class NativeMethods
         /// <summary>
         /// A wrapper for QueryFullProcessImageName
         /// </summary>
-        /// <param name="processId">
-        /// The identifier of the local process to be opened.
-        /// If the specified process is the System Idle Process(0x00000000),
-        ///  the function fails and the last error code is ERROR_INVALID_PARAMETER.
-        /// If the specified process is the System process or one of the Client Server Run-Time Subsystem(CSRSS) processes,
-        ///  this function fails and the last error code is ERROR_ACCESS_DENIED because their access restrictions prevent user-level code from opening them.
-        /// </param>
         /// <param name="hProcess">A SafeProcessHandle opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
         /// <returns>The path to the executable image.</returns>
         /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
