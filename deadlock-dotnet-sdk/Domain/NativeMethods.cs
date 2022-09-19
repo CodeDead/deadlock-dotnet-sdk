@@ -381,7 +381,7 @@ internal static class NativeMethods
         /// </summary>
         /// <exception cref="Exception">P/Invoke function NtQueryObject failed. See Exception data.</exception>
         /// <returns>The Type of the object as a string.</returns>
-        public unsafe string GetObjectType()
+        public unsafe string GetHandleObjectType()
         {
             /* Query the object type */
             string typeName;
@@ -402,7 +402,7 @@ internal static class NativeMethods
             return typeName;
         }
 
-        /// <summary>Invokes <see cref="GetObjectType()"/> and checks if the result is "File".</summary>
+        /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
         /// <returns>True if the handle is for a file or directory.</returns>
         /// <remarks>Based on source of C/C++ projects <see href="https://www.x86matthew.com/view_post?id=hijack_file_handle">Hijack File Handle</see> and <see href="https://github.com/adamkramer/handle_monitor">Handle Monitor</see></remarks>
         /// <exception cref="Exception">Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. See InnerException for details.</exception>
@@ -410,7 +410,7 @@ internal static class NativeMethods
         {
             try
             {
-                string type = GetObjectType();
+                string type = GetHandleObjectType();
                 return !string.IsNullOrWhiteSpace(type) && string.CompareOrdinal(type, "File") == 0;
             }
             catch (Exception e)
@@ -442,19 +442,23 @@ internal static class NativeMethods
     /// </summary>
     internal class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
-        private protected SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx;
-
-        internal SafeHandleEx(bool ownsHandle = false) : base(ownsHandle)
-        { }
-
-        public SafeHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX newSysHandleEx, bool ownsHandle = false) : base(ownsHandle)
+        /// <summary>
+        /// Initializes a new instance of the <c>SafeHandleEx</c> class from a <see cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX"/>, specifying whether the handle is to be reliably released.
+        /// </summary>
+        /// <param name="sysHandleEx"></param>
+        /// <param name="ownsHandle">true to reliably release the handle during the finalization phase; false to prevent reliable release(not recommended).</param>
+        /// <returns></returns>
+        internal SafeHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(false)
         {
-            sysHandleEx = newSysHandleEx;
-            Init();
-        }
-
-        internal void Init()
-        {
+            SysHandleEx = sysHandleEx;
+            try
+            {
+                HandleObjectType = SysHandleEx.GetHandleObjectType();
+            }
+            catch (Exception e)
+            {
+                ExceptionLog.Add(e);
+            }
             try
             {
                 //Process.EnterDebugMode(); Best practice: only call this once.
@@ -493,7 +497,7 @@ internal static class NativeMethods
             }
         }
 
-        internal SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX SysHandleEx => sysHandleEx;
+        internal SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX SysHandleEx { get; }
 
         public unsafe void* Object => SysHandleEx.Object;
         /// <summary>
@@ -507,6 +511,12 @@ internal static class NativeMethods
         public ushort ObjectTypeIndex => SysHandleEx.ObjectTypeIndex;
         /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.HandleAttributes"/>
         public uint HandleAttributes => SysHandleEx.HandleAttributes;
+
+        /// <summary>
+        /// The Type of the object as a string.
+        /// </summary>
+        /// <value></value>
+        public string? HandleObjectType { get; private set; }
 
         public string? ProcessCommandLine { get; private set; }
         public string? ProcessMainModulePath { get; private set; }
@@ -555,8 +565,6 @@ internal static class NativeMethods
                     hProcess.Close();
             }
         }
-
-        public string GetObjectType() => SysHandleEx.GetObjectType();
 
         /// <summary>
         /// Try to get a process's command line from its PEB
@@ -626,50 +634,42 @@ internal static class NativeMethods
     internal class SafeFileHandleEx : SafeHandleEx
     {
         // TODO: there's gotta be a better way to cast a base class to an implementing class
-        internal SafeFileHandleEx(SafeHandleEx safeHandleEx)
-        {
-            sysHandleEx = safeHandleEx.SysHandleEx;
-            Init();
-            InitFile();
-        }
+        internal SafeFileHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
+        { }
 
-        public SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx, bool ownsHandle) : base(newSysHandleEx: sysHandleEx, ownsHandle: ownsHandle)
+        /// <summary>
+        /// Initialize
+        /// </summary>
+        /// <param name="sysHandleEx"></param>
+        /// <param name="ownsHandle"></param>
+        /// <returns></returns>
+        public SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(sysHandleEx: sysHandleEx)
         {
-            //base.sysHandleEx = sysHandleEx;
-            //Init();
-            InitFile();
-        }
-
-        private void InitFile()
-        {
-            bool? isFileHandle;
             try
             {
-                isFileHandle = sysHandleEx.IsFileHandle();
-            }
-            catch (Exception)
-            {
-                isFileHandle = null;
-                // IsFileHandle failed
-            }
-            if (isFileHandle == true)
-            {
-                FullPath = TryGetFinalPath();
-                if (FullPath != null)
+                if (sysHandleEx.IsFileHandle())
                 {
-                    Name = Path.GetFileName(FullPath);
-                    IsDirectory = (File.GetAttributes(FullPath) & FileAttributes.Directory) == FileAttributes.Directory;
+                    FileFullPath = TryGetFinalPath();
+                    if (FileFullPath != null)
+                    {
+                        FileName = Path.GetFileName(FileFullPath);
+                        FileIsDirectory = (File.GetAttributes(FileFullPath) & FileAttributes.Directory) == FileAttributes.Directory;
+                    }
+                }
+                else
+                {
+                    ExceptionLog.Add(new InvalidCastException("Cannot cast non-file handle to file handle!"));
                 }
             }
-            else
+            catch (Exception ex)
             {
-                throw new InvalidCastException("Cannot cast non-file handle to file handle!");
+                ExceptionLog.Add(ex);
             }
         }
 
-        public string? FullPath { get; private set; }
-        public string? Name { get; private set; }
-        public bool? IsDirectory { get; private set; }
+        public string? FileFullPath { get; }
+        public string? FileName { get; }
+        public bool? FileIsDirectory { get; private set; }
 
         /// <summary>
         /// Try to get the absolute path of the file. Traverses filesystem links (e.g. symbolic, junction) to get the 'real' path.
