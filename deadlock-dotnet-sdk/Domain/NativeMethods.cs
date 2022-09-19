@@ -527,7 +527,7 @@ internal static class NativeMethods
         /// Intended to explain why the process command line, main module path, and name are unavailable.
         /// </summary>
         /// <remarks>Use List's methods (e.g. Add) to modify this list.</remarks>
-        public static List<Exception> ExceptionLog { get; } = new();
+        public List<Exception> ExceptionLog { get; } = new();
 
         /// <summary>
         /// Release the system handle.<br/>
