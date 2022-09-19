@@ -397,7 +397,7 @@ internal static class NativeMethods
             else
             {
                 Marshal.FreeHGlobal((IntPtr)objectTypeInfo);
-                throw new Win32Exception();
+                throw new Exception("P/Invoke function NtQueryObject failed. See Exception data.", status.GetNTStatusException());
             }
             return typeName;
         }
