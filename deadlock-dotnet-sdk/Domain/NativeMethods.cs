@@ -529,6 +529,15 @@ internal static class NativeMethods
         /// <remarks>Use List's methods (e.g. Add) to modify this list.</remarks>
         public static List<Exception> ExceptionLog { get; } = new();
 
+        /// <summary>
+        /// Release the system handle.<br/>
+        /// ! WARNING !<br/>
+        /// If the handle or a duplicate is in use by a driver or other kernel-level software, a function that accesses the now-invalid handle will cause a stopcode (AKA Blue Screen Of D).
+        /// </summary>
+        /// <remarks>
+        /// See Raymond Chen's devblog article 
+        /// <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
+        /// </remarks>
         public void UnlockSystemHandle()
         {
             HANDLE rawHProcess;
