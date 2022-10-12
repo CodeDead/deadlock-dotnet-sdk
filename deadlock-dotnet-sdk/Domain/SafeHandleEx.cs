@@ -14,14 +14,12 @@ namespace deadlock_dotnet_sdk.Domain;
 /// A SafeHandleZeroOrMinusOneIsInvalid wrapping a SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX<br/>
 /// Before querying for system handles, call <see cref="Process.EnterDebugMode()"/> for easier access to restricted data.
 /// </summary>
-internal class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
+public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
     /// <summary>
     /// Initializes a new instance of the <c>SafeHandleEx</c> class from a <see cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX"/>, specifying whether the handle is to be reliably released.
     /// </summary>
     /// <param name="sysHandleEx"></param>
-    /// <param name="ownsHandle">true to reliably release the handle during the finalization phase; false to prevent reliable release(not recommended).</param>
-    /// <returns></returns>
     internal SafeHandleEx(NativeMethods.SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(false)
     {
         SysHandleEx = sysHandleEx;
