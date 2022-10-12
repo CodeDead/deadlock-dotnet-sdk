@@ -314,7 +314,9 @@ internal static partial class NativeMethods
         public ushort ObjectTypeIndex; // USHORT
         /// <summary><see href="https://docs.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_object_attributes#members"/></summary>
         public uint HandleAttributes; // ULONG
-        public uint Reserved;
+#pragma warning disable RCS1213
+        private readonly uint Reserved; // Remove unused field declaration. csharp(RCS1213) | Roslynator
+#pragma warning restore RCS1213
 
         /// <summary>
         /// Get the Type of the object as a string
