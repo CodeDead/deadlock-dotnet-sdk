@@ -85,11 +85,11 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// The Type of the object as a string.
     /// </summary>
     /// <value></value>
-    public string? HandleObjectType { get; private set; }
+    public string? HandleObjectType { get; }
 
     public string? ProcessCommandLine { get; private set; }
-    public string? ProcessMainModulePath { get; private set; }
-    public string? ProcessName { get; private set; }
+    public string? ProcessMainModulePath { get; }
+    public string? ProcessName { get; }
 
     /// <summary>
     /// A list of exceptions thrown by constructors and other methods of this class.<br/>
