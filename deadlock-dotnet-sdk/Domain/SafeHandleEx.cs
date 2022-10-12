@@ -110,6 +110,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// See Raymond Chen's devblog article 
     /// <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
     /// </remarks>
+    /// <exception cref="Win32Exception">Failed to open process to duplicate and close object handle.</exception>
     public void UnlockSystemHandle()
     {
         HANDLE rawHProcess;
