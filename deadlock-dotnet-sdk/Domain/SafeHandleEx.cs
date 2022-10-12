@@ -45,7 +45,7 @@ internal class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             HANDLE rawHandle = OpenProcess(
                 dwDesiredAccess: PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ,
                 bInheritHandle: (BOOL)false,
-                dwProcessId: (uint)ProcessId
+                dwProcessId: ProcessId
             );
 
             if (rawHandle.IsNull)
@@ -77,8 +77,8 @@ internal class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// cast to uint
     /// </summary>
-    public HANDLE ProcessId => SysHandleEx.UniqueProcessId;
-    public HANDLE HandleValue => SysHandleEx.HandleValue;
+    public uint ProcessId => (uint)SysHandleEx.UniqueProcessId;
+    public nuint HandleValue => SysHandleEx.HandleValue;
     public ushort CreatorBackTraceIndex => SysHandleEx.CreatorBackTraceIndex;
     /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.GrantedAccess"/>
     public ACCESS_MASK GrantedAccess => SysHandleEx.GrantedAccess;
@@ -121,10 +121,10 @@ internal class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             if ((rawHProcess = OpenProcess(
                 PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE,
                 true,
-                (uint)ProcessId)
+                ProcessId)
                 ).IsNull)
             {
-                throw new Win32Exception($"Failed to open process with id {(int)ProcessId} to duplicate and close object handle.");
+                throw new Win32Exception($"Failed to open process with id {ProcessId} to duplicate and close object handle.");
             }
 
             hProcess = new(rawHProcess, true);
