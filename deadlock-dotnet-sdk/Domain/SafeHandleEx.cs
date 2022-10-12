@@ -80,9 +80,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     public ushort CreatorBackTraceIndex => SysHandleEx.CreatorBackTraceIndex;
     /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.GrantedAccess"/>
     public ACCESS_MASK GrantedAccess => SysHandleEx.GrantedAccess;
-    public ushort ObjectTypeIndex => SysHandleEx.ObjectTypeIndex;
-    /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.HandleAttributes"/>
-    public uint HandleAttributes => SysHandleEx.HandleAttributes;
 
     /// <summary>
     /// The Type of the object as a string.
