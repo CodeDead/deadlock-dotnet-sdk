@@ -73,7 +73,7 @@ namespace Windows.Win32
         /// A simple placeholder for dotnet/PInvoke's ACCESS_MASK struct
         /// </summary>
         /// <remarks>Process access modifiers are found in Windows.Win32.System.Threading.PROCESS_ACCESS_RIGHTS</remarks>
-        internal struct ACCESS_MASK
+        public struct ACCESS_MASK
         {
             public ACCESS_MASK(uint v)
             {
@@ -81,7 +81,6 @@ namespace Windows.Win32
             }
 
             public uint Value;
-            public PROCESS_ACCESS_RIGHTS ProcessAccess => (PROCESS_ACCESS_RIGHTS)Value;
 
             public static implicit operator ACCESS_MASK(uint v) => new(v);
             public static implicit operator uint(ACCESS_MASK v) => v.Value;
