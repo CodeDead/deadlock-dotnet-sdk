@@ -36,17 +36,21 @@ namespace deadlock_dotnet_sdk.Domain
             Lockers = lockers;
         }
 
-        public static FileLockerEx GetFileLockerEx(string path, ResultsFilter filter = ResultsFilter.FilesOnly)
+        /// <summary>
+        /// TODO:
+        /// </summary>
+        /// <param name="path">The path of the file or directory</param>
+        /// <param name="filter"></param>
+        public FileLockerEx(string path, ResultsFilter filter)
         {
-            return new(
-                path,
-                NativeMethods.FindLockingHandles(path, filter)
-                );
+            Path = path;
+            Lockers = NativeMethods.FindLockingHandles(path, filter);
         }
 
         /// <summary>
-        /// Filters for <see cref="FindLockingHandles(string?, Filter)"/>
+        /// Filters for <see cref="NativeMethods.FindLockingHandles(string?, ResultsFilter)"/>
         /// </summary>
+        /// TODO: rename to HandlesFilter
         [Flags]
         public enum ResultsFilter
         {
