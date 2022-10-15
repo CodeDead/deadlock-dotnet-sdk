@@ -104,11 +104,10 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// Release the system handle.<br/>
     /// ! WARNING !<br/>
-    /// If the handle or a duplicate is in use by a driver or other kernel-level software, a function that accesses the now-invalid handle will cause a stopcode (AKA Blue Screen Of D).
+    /// If the handle or a duplicate is in use by a driver or other kernel-level software, a function that accesses the now-invalid handle will cause a stopcode (AKA Blue Screen Of Death).
     /// </summary>
     /// <remarks>
-    /// See Raymond Chen's devblog article 
-    /// <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
+    /// See Raymond Chen's devblog article <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
     /// </remarks>
     /// <exception cref="Win32Exception">Failed to open process to duplicate and close object handle.</exception>
     public void UnlockSystemHandle()
