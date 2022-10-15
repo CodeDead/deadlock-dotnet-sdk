@@ -177,8 +177,8 @@ internal static partial class NativeMethods
     internal enum Filter
     {
         FilesOnly = 0,
-        NonFiles = 1,
-        TypeQueryFailed = 2
+        IncludeNonFiles = 1,
+        IncludeFailedTypeQuery = 2
     }
 
     /// <summary>
