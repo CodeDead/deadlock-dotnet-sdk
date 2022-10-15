@@ -123,9 +123,7 @@ internal static partial class NativeMethods
     }
 
     /// <summary>
-    ///     Query the system's open handles;
-    ///     Try to filter them to just files, optionally including handles for non-File and unidentified object types;
-    ///     Filter "File" handles to only those whose full paths contain the query string.
+    ///     Query the system's open handles, optionally including non-file handles or handles whose types could not be determined.
     /// </summary>
     /// <param name="query">
     ///     When a query string is passed to this method, all "File"
