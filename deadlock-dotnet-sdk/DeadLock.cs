@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using deadlock_dotnet_sdk.Domain;
 using HandlesFilter = deadlock_dotnet_sdk.Domain.FileLockerEx.HandlesFilter;
 
@@ -221,5 +221,210 @@ namespace deadlock_dotnet_sdk
                 await UnlockAsync(f);
             }
         }
+
+        #endregion ProcessLocks
+
+        #region HandleLocks
+
+        /// <summary>
+        /// Retrieve the <see cref="FileLockerEx"/> object that contains a List of handles that are locking a file.
+        /// </summary>
+        /// <param name="filePath">The full or partial path of a file or directory.</param>
+        /// <param name="filter">By default, only handles whose object's Type is confirmed to "File" are returned. Optionally, handles for data pipes, printers, and other Types can be included, in addition to handles whose object Type could not be identified for some reason.</param>
+        /// <returns>The <see cref="FileLockerEx"/> object that contains the <paramref name="filePath"/> and a list of handles matching the <paramref name="filter"/>.</returns>
+        public FileLockerEx FindLockingHandles(string filePath)
+        {
+            return new(filePath, Filter);
+        }
+
+        /// <summary>
+        /// Retrieve the List of <see cref="FileLockerEx"/> objects for one or multiple files and/or directories
+        /// </summary>
+        /// <param name="filter">By default, only handles whose object's Type is confirmed to "File" are returned. Optionally, handles for data pipes, printers, and other Types can be included, in addition to handles whose object Type could not be identified for some reason.</param>
+        /// <returns>The List of <see cref="FileLockerEx"/> objects that contains a List of handles that are locking one or multiple files and/or directories</returns>
+        public List<FileLockerEx> FindLockingHandles(params string[] filePaths)
+        {
+            List<FileLockerEx> fileLockers = new();
+            if (filePaths.Length == 1)
+            {
+                fileLockers.Add(FindLockingHandles(filePaths[0]));
+            }
+            else
+            {
+                foreach (string filePath in filePaths)
+                {
+                    fileLockers.Add(FindLockingHandles(filePath));
+                }
+            }
+            return fileLockers;
+        }
+
+        /// <summary>
+        /// Asynchronously retrieve the <see cref="FileLockerEx"/> object that contains a List of handles that are locking a file or directory
+        /// </summary>
+        /// <param name="filePath">The full or partial path of a file</param>
+        /// <param name="filter">By default, only handles whose object's Type is confirmed to "File" are returned. Optionally, handles for data pipes, printers, and other Types can be included, in addition to handles whose object Type could not be identified for some reason.</param>
+        /// <returns>The <see cref="FileLockerEx"/> object that contains a List of handles that are locking a file or directory</returns>
+        public static async Task<FileLockerEx> FindLockingHandlesAsync(string filePath)
+        {
+            FileLockerEx fileLocker = new();
+
+            await Task.Run(() =>
+            {
+                fileLocker = new FileLockerEx(filePath,
+                    NativeMethods.FindLockingHandles(filePath));
+            });
+
+            return fileLocker;
+        }
+
+        /// <summary>
+        ///  Asynchronously retrieve the List of <see cref="FileLockerEx"/> objects for one or multiple files and/or directories
+        /// </summary>
+        /// <param name="filePaths">The full or partial paths of files and/or directories </param>
+        /// <returns>The List of <see cref="FileLockerEx"/> objects that contain the handles that are locking a file or directory</returns>
+        public async Task<List<FileLockerEx>> FindLockingHandlesAsync(params string[] filePaths)
+        {
+            List<FileLockerEx> fileLockers = new();
+
+            await Task.Run(() =>
+            {
+                foreach (string filePath in filePaths)
+                {
+                    fileLockers.Add(new FileLockerEx(filePath,
+                        NativeMethods.FindLockingHandles(filePath, Filter)));
+                }
+            });
+
+            return fileLockers;
+        }
+
+        /// <summary>
+        /// Unlock a File or Directory by leveraging undocumented kernel functions to make all processes release their handles of the file
+        /// Release the system handle.
+        /// ! WARNING !
+        /// ! If a handle or a duplicate of a handle is in use by a driver or other kernel-level software, a function that accesses the now-invalid handle can cause a stopcode (AKA Blue Screen Of Death).<br/>
+        /// ! Be very wary of potentially destabilizing your or your end-user's system!<br/>
+        /// ! Even more so if you used the <see cref="HandlesFilter.IncludeFailedTypeQuery"/> or <see cref="HandlesFilter.IncludeNonFiles"/> filter flags
+        /// </summary>
+        /// <param name="fileLocker">The <see cref="FileLockerEx"/> that contains the List of handles that should be released</param>
+        public void UnlockEx(FileLockerEx fileLocker)
+        {
+            foreach (SafeFileHandleEx h in fileLocker.Lockers)
+            {
+                if (h.IsClosed && h.IsInvalid) continue;
+                try
+                {
+                    h.UnlockSystemHandle();
+                }
+                catch (Exception) when (!RethrowExceptions) { }
+            }
+        }
+
+        /// <summary>
+        /// Unlock one or more files or directories by directing each handle's owner process to release the handle
+        /// ! WARNING !
+        /// ! If a handle or a duplicate of a handle is in use by a driver or other kernel-level software, a function that accesses the now-invalid handle can cause a stopcode (AKA Blue Screen Of Death).<br/>
+        /// ! Be very wary of potentially destabilizing your or your end-user's system!<br/>
+        /// ! Even more so if you used the <see cref="HandlesFilter.IncludeFailedTypeQuery"/> or <see cref="HandlesFilter.IncludeNonFiles"/> filter flags
+        /// </summary>
+        /// <param name="fileLockers">The <see cref="FileLockerEx"/> objects that contain the List of handles that are locking a file or directory</param>
+        public void UnlockEx(params FileLockerEx[] fileLockers)
+        {
+            foreach (FileLockerEx fileLocker in fileLockers)
+            {
+                UnlockEx(fileLocker);
+            }
+        }
+
+        /// <summary>
+        /// Unlock a File or Directory asynchronously by directing each handle's owner process to release the handle
+        /// </summary>
+        /// <param name="fileLocker">The <see cref="FileLockerEx"/> that contains the List of handles that should be released</param>
+        public async Task UnlockExAsync(FileLockerEx fileLocker)
+        {
+            await Task.Run(() =>
+            {
+                foreach (SafeFileHandleEx h in fileLocker.Lockers)
+                {
+                    if (h.IsClosed && h.IsInvalid) continue;
+                    try
+                    {
+                        h.UnlockSystemHandle();
+                    }
+                    catch (Exception) when (!RethrowExceptions) { }
+                }
+            });
+        }
+
+        /// <summary>
+        /// Unlock one or more files/directories asynchronously by directing each handle's owner process to release the relevant handles
+        /// </summary>
+        /// <param name="fileLockers">The <see cref="FileLockerEx"/> objects that contain the List of handles that are locking a file/directory</param>
+        public async Task UnlockExAsync(params FileLockerEx[] fileLockers)
+        {
+            await Task.Run(() =>
+            {
+                foreach (FileLockerEx fileLocker in fileLockers)
+                {
+                    foreach (SafeFileHandleEx h in fileLocker.Lockers)
+                    {
+                        if (h.IsClosed && h.IsInvalid) continue;
+                        try
+                        {
+                            h.UnlockSystemHandle();
+                        }
+                        catch (Exception) when (!RethrowExceptions) { }
+                    }
+                }
+            });
+        }
+
+        /// <summary>
+        /// Unlock a file/directory without retrieving the List of FileLockerEx objects
+        /// </summary>
+        /// <param name="filePath">The path of the file/directory that should be unlocked</param>
+        public void UnlockEx(string filePath)
+        {
+            FileLockerEx fileLocker = FindLockingHandles(filePath);
+            UnlockEx(fileLocker);
+        }
+
+        /// <summary>
+        /// Unlock a file/directory without retrieving the List of FileLockerEx objects asynchronously
+        /// </summary>
+        /// <param name="filePath">The path of the file/directory that should be unlocked</param>
+        public async Task UnlockExAsync(string filePath)
+        {
+            FileLockerEx locker = await FindLockingHandlesAsync(filePath);
+            await UnlockExAsync(locker);
+        }
+
+        /// <summary>
+        /// Unlock one or more files/directories without retrieving the List of FileLockerEx objects
+        /// </summary>
+        /// <param name="filePaths">The full or partial paths of the files/directories that should be unlocked</param>
+        public void UnlockEx(params string[] filePaths)
+        {
+            foreach (FileLocker fileLocker in FindLockingProcesses(filePaths))
+            {
+                Unlock(fileLocker);
+            }
+        }
+
+        /// <summary>
+        /// Unlock one or more files/directories without retrieving the List of FileLockerEx objects asynchronously
+        /// </summary>
+        /// <param name="filePaths">The full or partial paths of the files/directories that should be unlocked</param>
+        public async Task UnlockExAsync(params string[] filePaths)
+        {
+            List<FileLockerEx> fileLockers = await FindLockingHandlesAsync(filePaths);
+            foreach (FileLockerEx f in fileLockers)
+            {
+                await UnlockExAsync(f);
+            }
+        }
+
+        #endregion HandleLocks
     }
 }
