@@ -12,7 +12,10 @@ namespace deadlock_dotnet_sdk.Domain;
 
 /// <summary>
 /// A SafeHandleZeroOrMinusOneIsInvalid wrapping a SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX<br/>
-/// Before querying for system handles, call <see cref="Process.EnterDebugMode()"/> for easier access to restricted data.
+/// Before querying for system handles, call <see cref="Process.EnterDebugMode()"/>
+/// for access to some otherwise restricted data.
+/// NOTE: <see cref="NativeMethods.FindLockingHandles">FindLockingHandles(string, Filter)</see>
+/// enters Debug mode before querying handles and other data.
 /// </summary>
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
