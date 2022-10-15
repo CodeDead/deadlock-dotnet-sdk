@@ -1,4 +1,4 @@
-namespace deadlock_dotnet_sdk.Domain
+﻿namespace deadlock_dotnet_sdk.Domain
 {
     public class FileLockerEx
     {
@@ -11,9 +11,9 @@ namespace deadlock_dotnet_sdk.Domain
         /// <summary>
         /// Get or set the List of Process objects that are locking the file
         /// </summary>
-        public List<SafeHandleEx> Lockers { get; set; }
+        public List<SafeFileHandleEx> Lockers { get; set; }
 
-        #endregion
+        #endregion Properties
 
         /// <summary>
         /// Initialize a new FileLocker
@@ -21,7 +21,7 @@ namespace deadlock_dotnet_sdk.Domain
         public FileLockerEx()
         {
             Path = "";
-            Lockers = new List<SafeHandleEx>();
+            Lockers = new List<SafeFileHandleEx>();
         }
 
         /// <summary>
@@ -29,7 +29,7 @@ namespace deadlock_dotnet_sdk.Domain
         /// </summary>
         /// <param name="path">The path of the file</param>
         /// <param name="lockers">The List of Process objects that are locking the file</param>
-        public FileLockerEx(string path, List<SafeHandleEx> lockers)
+        public FileLockerEx(string path, List<SafeFileHandleEx> lockers)
         {
             Path = path;
             Lockers = lockers;
