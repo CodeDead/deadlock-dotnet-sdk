@@ -133,7 +133,7 @@ internal static partial class NativeMethods
     /// <param name="filter">
     ///     By default, this method only returns handles for objects
     ///     successfully identified as a file/directory ("File").
-    ///     <see cref="ResultsFilter.IncludeNonFiles"/> and <see cref="ResultsFilter.TypeQueryFailed"/>
+    ///     <see cref="ResultsFilter.IncludeNonFiles"/> and <see cref="ResultsFilter.IncludeFailedTypeQuery"/>
     /// </param>
     /// <returns>
     ///     A list of SafeFileHandleEx objects.
