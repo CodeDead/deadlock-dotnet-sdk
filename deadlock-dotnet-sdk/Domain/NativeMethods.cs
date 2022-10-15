@@ -133,7 +133,7 @@ internal static partial class NativeMethods
     /// <param name="filter">
     ///     By default, this method only returns handles for objects
     ///     successfully identified as a file/directory ("File").
-    ///     <see cref="ResultsFilter.IncludeNonFiles"/> and <see cref="ResultsFilter.IncludeFailedTypeQuery"/>
+    ///     <see cref="HandlesFilter.IncludeNonFiles"/> and <see cref="HandlesFilter.IncludeFailedTypeQuery"/>
     /// </param>
     /// <returns>
     ///     A list of SafeFileHandleEx objects.
@@ -141,7 +141,7 @@ internal static partial class NativeMethods
     /// </returns>
     /// <remarks>This might be arduously slow...</remarks>
     // TODO: Perhaps we should allow a new query without re-calling GetSystemHandleInfoEx().
-    internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, ResultsFilter filter = ResultsFilter.FilesOnly)
+    internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
         Process.EnterDebugMode(); // just in case
 
@@ -157,14 +157,14 @@ internal static partial class NativeMethods
                 /* Query for object type succeeded and the type is NOT File */
                 if (h.HandleObjectType != "File")
                 {
-                    return !filter.HasFlag(ResultsFilter.IncludeNonFiles); // When requested, keep non-File object handle. Else, discard.
+                    return !filter.HasFlag(HandlesFilter.IncludeNonFiles); // When requested, keep non-File object handle. Else, discard.
                 }
                 // Discard handle if Query and file's path are not null and file's path does not contain query */
                 return (query is not null) && (h.FileFullPath is not null) && (!h.FileFullPath.Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)));
             }
             else
             {
-                return !filter.HasFlag(ResultsFilter.IncludeFailedTypeQuery); // When requested, keep handle if the object type query failed. Else, discard.
+                return !filter.HasFlag(HandlesFilter.IncludeFailedTypeQuery); // When requested, keep handle if the object type query failed. Else, discard.
             }
         }
     }

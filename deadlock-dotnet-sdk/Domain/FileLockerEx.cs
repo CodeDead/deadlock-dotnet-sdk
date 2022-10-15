@@ -1,4 +1,4 @@
-namespace deadlock_dotnet_sdk.Domain
+﻿namespace deadlock_dotnet_sdk.Domain
 {
     public class FileLockerEx
     {
@@ -41,18 +41,18 @@ namespace deadlock_dotnet_sdk.Domain
         /// </summary>
         /// <param name="path">The path of the file or directory</param>
         /// <param name="filter"></param>
-        public FileLockerEx(string path, ResultsFilter filter)
+        public FileLockerEx(string path, HandlesFilter filter)
         {
             Path = path;
             Lockers = NativeMethods.FindLockingHandles(path, filter);
         }
 
         /// <summary>
-        /// Filters for <see cref="NativeMethods.FindLockingHandles(string?, ResultsFilter)"/>
+        /// Filters for <see cref="NativeMethods.FindLockingHandles(string?, HandlesFilter)"/>
         /// </summary>
         /// TODO: rename to HandlesFilter
         [Flags]
-        public enum ResultsFilter
+        public enum HandlesFilter
         {
             FilesOnly = 0,
             IncludeNonFiles = 1,

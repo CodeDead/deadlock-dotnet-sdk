@@ -1,5 +1,6 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using deadlock_dotnet_sdk.Domain;
+using HandlesFilter = deadlock_dotnet_sdk.Domain.FileLockerEx.HandlesFilter;
 
 namespace deadlock_dotnet_sdk
 {
@@ -12,7 +13,12 @@ namespace deadlock_dotnet_sdk
         /// </summary>
         public bool RethrowExceptions { get; set; }
 
-        #endregion
+        /// <summary>
+        /// Property that specifies if any non-file/directory handles are to be included in FileLockerEx handle lists
+        /// </summary>
+        public HandlesFilter Filter { get; set; } = HandlesFilter.FilesOnly;
+
+        #endregion Properties
 
         /// <summary>
         /// Default constructor
@@ -30,6 +36,14 @@ namespace deadlock_dotnet_sdk
         {
             RethrowExceptions = rethrowExceptions;
         }
+
+        public DeadLock(bool rethrowExceptions, HandlesFilter filter)
+        {
+            RethrowExceptions = rethrowExceptions;
+            Filter = filter;
+        }
+
+        #region ProcessLocks
 
         /// <summary>
         /// Retrieve the FileLocker object that contains a List of Process objects that are locking a file
