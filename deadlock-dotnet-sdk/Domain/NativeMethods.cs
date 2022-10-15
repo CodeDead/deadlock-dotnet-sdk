@@ -7,6 +7,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.Security;
 using Windows.Win32.System.RestartManager;
 using Windows.Win32.System.WindowsProgramming;
+using static deadlock_dotnet_sdk.Domain.FileLockerEx;
 using static Windows.Win32.PInvoke;
 
 // Re: StructLayout
@@ -134,7 +135,7 @@ internal static partial class NativeMethods
     /// <param name="filter">
     ///     By default, this method only returns handles for objects
     ///     successfully identified as a file/directory ("File").
-    ///     <see cref="Filter.NonFiles"/> and <see cref="Filter.TypeQueryFailed"/>
+    ///     <see cref="ResultsFilter.IncludeNonFiles"/> and <see cref="ResultsFilter.TypeQueryFailed"/>
     /// </param>
     /// <returns>
     ///     A list of SafeFileHandleEx objects.
@@ -142,7 +143,7 @@ internal static partial class NativeMethods
     /// </returns>
     /// <remarks>This might be arduously slow...</remarks>
     // TODO: Perhaps we should allow a new query without re-calling GetSystemHandleInfoEx().
-    internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, Filter filter = Filter.FilesOnly)
+    internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, ResultsFilter filter = ResultsFilter.FilesOnly)
     {
         Process.EnterDebugMode(); // just in case
 
@@ -158,27 +159,16 @@ internal static partial class NativeMethods
                 /* Query for object type succeeded and the type is NOT File */
                 if (h.HandleObjectType != "File")
                 {
-                    return !filter.HasFlag(Filter.NonFiles); // When requested, keep non-File object handle. Else, discard.
+                    return !filter.HasFlag(ResultsFilter.IncludeNonFiles); // When requested, keep non-File object handle. Else, discard.
                 }
                 // Discard handle if Query and file's path are not null and file's path does not contain query */
                 return (query is not null) && (h.FileFullPath is not null) && (!h.FileFullPath.Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)));
             }
             else
             {
-                return !filter.HasFlag(Filter.TypeQueryFailed); // When requested, keep handle if the object type query failed. Else, discard.
+                return !filter.HasFlag(ResultsFilter.IncludeFailedTypeQuery); // When requested, keep handle if the object type query failed. Else, discard.
             }
         }
-    }
-
-    /// <summary>
-    /// Filters for <see cref="FindLockingHandles(string?, Filter)"/>
-    /// </summary>
-    [Flags]
-    internal enum Filter
-    {
-        FilesOnly = 0,
-        IncludeNonFiles = 1,
-        IncludeFailedTypeQuery = 2
     }
 
     /// <summary>
@@ -255,8 +245,6 @@ internal static partial class NativeMethods
 
         return retVal.AsSpan();
     }
-
-
 
     #endregion Methods
 

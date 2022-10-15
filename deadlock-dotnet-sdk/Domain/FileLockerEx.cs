@@ -1,4 +1,4 @@
-﻿namespace deadlock_dotnet_sdk.Domain
+namespace deadlock_dotnet_sdk.Domain
 {
     public class FileLockerEx
     {
@@ -35,12 +35,23 @@
             Lockers = lockers;
         }
 
-        public static FileLockerEx GetFileLockerEx(string path, NativeMethods.Filter filter)
+        public static FileLockerEx GetFileLockerEx(string path, ResultsFilter filter = ResultsFilter.FilesOnly)
         {
             return new(
                 path,
                 NativeMethods.FindLockingHandles(path, filter)
                 );
+        }
+
+        /// <summary>
+        /// Filters for <see cref="FindLockingHandles(string?, Filter)"/>
+        /// </summary>
+        [Flags]
+        public enum ResultsFilter
+        {
+            FilesOnly = 0,
+            IncludeNonFiles = 1,
+            IncludeFailedTypeQuery = 2
         }
     }
 }
