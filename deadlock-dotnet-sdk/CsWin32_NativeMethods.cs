@@ -198,14 +198,15 @@ namespace Windows.Win32
                 => obj is PPS_POST_PROCESS_INIT_ROUTINE pPS_POST_PROCESS_INIT_ROUTINE && Equals(pPS_POST_PROCESS_INIT_ROUTINE);
         }
 
+#pragma warning disable CS0649
         [global::System.CodeDom.Compiler.GeneratedCode("Microsoft.Windows.CsWin32", "0.2.46-beta+0e9cbfc7b9")]
-        internal struct PROCESS_BASIC_INFORMATION
+        internal readonly struct PROCESS_BASIC_INFORMATION
         {
-            internal unsafe void* Reserved1;
-            internal unsafe PEB* PebBaseAddress;
-            internal __IntPtr_2 Reserved2;
-            internal nuint UniqueProcessId;
-            internal unsafe void* Reserved3;
+            internal readonly unsafe void* Reserved1;
+            internal readonly unsafe PEB* PebBaseAddress;
+            internal readonly __IntPtr_2 Reserved2;
+            internal readonly nuint UniqueProcessId;
+            internal readonly unsafe void* Reserved3;
 
             internal struct __IntPtr_2
             {
@@ -229,5 +230,6 @@ namespace Windows.Win32
                 internal Span<IntPtr> AsSpan() => MemoryMarshal.CreateSpan(ref _0, 2);
             }
         }
+#pragma warning restore CS0649
     }
 }

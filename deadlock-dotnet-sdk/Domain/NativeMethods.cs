@@ -252,15 +252,19 @@ internal static partial class NativeMethods
     /// The <see href="https://www.geoffchappell.com/studies/windows/km/ntoskrnl/api/ex/sysinfo/handle_ex.htm"><c>SYSTEM_HANDLE_INFORMATION_EX</c></see>
     /// struct is 0x24 or 0x38 bytes in 32-bit and 64-bit Windows, respectively. However, Handles is a variable-length array.
     /// </summary>
-    public unsafe struct SYSTEM_HANDLE_INFORMATION_EX
+    public unsafe readonly struct SYSTEM_HANDLE_INFORMATION_EX
     {
+#pragma warning disable CS0649
+
         /// <summary>
         /// As documented unofficially, NumberOfHandles is a 4-byte or 8-byte ULONG_PTR in 32-bit and 64-bit Windows, respectively.<br/>
         /// This is not to be confused with uint* or ulong*.
         /// </summary>
-        public UIntPtr NumberOfHandles;
-        public UIntPtr Reserved;
-        public SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX* Handles;
+        public readonly UIntPtr NumberOfHandles;
+        public readonly UIntPtr Reserved;
+        public readonly SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX* Handles;
+
+#pragma warning restore CS0649
 
         public Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX> AsSpan() => new(Handles, (int)NumberOfHandles);
         public static implicit operator Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX>(SYSTEM_HANDLE_INFORMATION_EX value) => value.AsSpan();
@@ -279,30 +283,31 @@ internal static partial class NativeMethods
     /// SystemHandleInformation (0x10)</see>.</para>
     /// This inline doc was supplemented by ProcessHacker's usage of this struct.
     /// </summary>
-    public struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
+    public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
     {
-        public unsafe void* Object;
+#pragma warning disable CS0649
+        public readonly unsafe void* Object;
         /// <summary>
         /// ULONG_PTR, cast to HANDLE, int, or uint
         /// </summary>
-        public HANDLE UniqueProcessId;
+        public readonly HANDLE UniqueProcessId;
         /// <summary>
         /// ULONG_PTR, cast to HANDLE
         /// </summary>
-        public HANDLE HandleValue;
+        public readonly HANDLE HandleValue;
         /// <summary>
         /// This is a bitwise "Flags" data type.
         /// See the "Granted Access" column in the Handles section of a process properties window in ProcessHacker.
         /// </summary>
-        public ACCESS_MASK GrantedAccess; // ULONG
-        public ushort CreatorBackTraceIndex; // USHORT
+        public readonly ACCESS_MASK GrantedAccess; // ULONG
+        public readonly ushort CreatorBackTraceIndex; // USHORT
         /// <summary>ProcessHacker defines a little over a dozen handle-able object types.</summary>
-        public ushort ObjectTypeIndex; // USHORT
+        public readonly ushort ObjectTypeIndex; // USHORT
         /// <summary><see href="https://docs.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_object_attributes#members"/></summary>
-        public uint HandleAttributes; // ULONG
-#pragma warning disable RCS1213
-        private readonly uint Reserved; // Remove unused field declaration. csharp(RCS1213) | Roslynator
-#pragma warning restore RCS1213
+        public readonly uint HandleAttributes; // ULONG
+#pragma warning disable RCS1213 // Remove unused field declaration. csharp(RCS1213) | Roslynator
+        private readonly uint Reserved;
+#pragma warning restore RCS1213, CS0649
 
         /// <summary>
         /// Get the Type of the object as a string
