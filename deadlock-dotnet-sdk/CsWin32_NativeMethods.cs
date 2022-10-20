@@ -196,6 +196,8 @@ namespace Windows.Win32
 
             public override bool Equals(object? obj)
                 => obj is PPS_POST_PROCESS_INIT_ROUTINE pPS_POST_PROCESS_INIT_ROUTINE && Equals(pPS_POST_PROCESS_INIT_ROUTINE);
+
+            public override int GetHashCode() => Value.GetHashCode();
         }
 
 #pragma warning disable CS0649
