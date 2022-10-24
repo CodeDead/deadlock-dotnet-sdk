@@ -13,11 +13,6 @@ namespace deadlock_dotnet_sdk
         /// </summary>
         public bool RethrowExceptions { get; set; }
 
-        /// <summary>
-        /// Property that specifies if any non-file/directory handles are to be included in FileLockerEx handle lists
-        /// </summary>
-        public HandlesFilter Filter { get; set; } = HandlesFilter.FilesOnly;
-
         #endregion Properties
 
         /// <summary>
@@ -35,12 +30,6 @@ namespace deadlock_dotnet_sdk
         public DeadLock(bool rethrowExceptions)
         {
             RethrowExceptions = rethrowExceptions;
-        }
-
-        public DeadLock(bool rethrowExceptions, HandlesFilter filter)
-        {
-            RethrowExceptions = rethrowExceptions;
-            Filter = filter;
         }
 
         #region ProcessLocks
@@ -232,9 +221,14 @@ namespace deadlock_dotnet_sdk
         /// <param name="filePath">The full or partial path of a file or directory.</param>
         /// <param name="filter">By default, only handles whose object's Type is confirmed to "File" are returned. Optionally, handles for data pipes, printers, and other Types can be included, in addition to handles whose object Type could not be identified for some reason.</param>
         /// <returns>The <see cref="FileLockerEx"/> object that contains the <paramref name="filePath"/> and a list of handles matching the <paramref name="filter"/>.</returns>
-        public FileLockerEx FindLockingHandles(string filePath)
+        public FileLockerEx FindLockingHandles(string filePath, HandlesFilter filter = HandlesFilter.FilesOnly)
         {
-            return new(filePath, Filter);
+            try
+            {
+                return new(filePath, filter, RethrowExceptions);
+            }
+            catch (UnauthorizedAccessException) when (!RethrowExceptions)
+            { return new(); }
         }
 
         /// <summary>
@@ -242,18 +236,18 @@ namespace deadlock_dotnet_sdk
         /// </summary>
         /// <param name="filter">By default, only handles whose object's Type is confirmed to "File" are returned. Optionally, handles for data pipes, printers, and other Types can be included, in addition to handles whose object Type could not be identified for some reason.</param>
         /// <returns>The List of <see cref="FileLockerEx"/> objects that contains a List of handles that are locking one or multiple files and/or directories</returns>
-        public List<FileLockerEx> FindLockingHandles(params string[] filePaths)
+        public List<FileLockerEx> FindLockingHandles(HandlesFilter filter = HandlesFilter.FilesOnly, params string[] filePaths)
         {
             List<FileLockerEx> fileLockers = new();
             if (filePaths.Length == 1)
             {
-                fileLockers.Add(FindLockingHandles(filePaths[0]));
+                fileLockers.Add(FindLockingHandles(filePaths[0], filter));
             }
             else
             {
                 foreach (string filePath in filePaths)
                 {
-                    fileLockers.Add(FindLockingHandles(filePath));
+                    fileLockers.Add(FindLockingHandles(filePath, filter));
                 }
             }
             return fileLockers;
@@ -265,14 +259,14 @@ namespace deadlock_dotnet_sdk
         /// <param name="filePath">The full or partial path of a file</param>
         /// <param name="filter">By default, only handles whose object's Type is confirmed to "File" are returned. Optionally, handles for data pipes, printers, and other Types can be included, in addition to handles whose object Type could not be identified for some reason.</param>
         /// <returns>The <see cref="FileLockerEx"/> object that contains a List of handles that are locking a file or directory</returns>
-        public static async Task<FileLockerEx> FindLockingHandlesAsync(string filePath)
+        public static async Task<FileLockerEx> FindLockingHandlesAsync(string filePath, HandlesFilter filter = HandlesFilter.FilesOnly)
         {
             FileLockerEx fileLocker = new();
 
             await Task.Run(() =>
             {
                 fileLocker = new FileLockerEx(filePath,
-                    NativeMethods.FindLockingHandles(filePath));
+                    NativeMethods.FindLockingHandles(filePath, filter));
             });
 
             return fileLocker;
@@ -283,7 +277,7 @@ namespace deadlock_dotnet_sdk
         /// </summary>
         /// <param name="filePaths">The full or partial paths of files and/or directories </param>
         /// <returns>The List of <see cref="FileLockerEx"/> objects that contain the handles that are locking a file or directory</returns>
-        public async Task<List<FileLockerEx>> FindLockingHandlesAsync(params string[] filePaths)
+        public static async Task<List<FileLockerEx>> FindLockingHandlesAsync(HandlesFilter filter = HandlesFilter.FilesOnly, params string[] filePaths)
         {
             List<FileLockerEx> fileLockers = new();
 
@@ -292,7 +286,7 @@ namespace deadlock_dotnet_sdk
                 foreach (string filePath in filePaths)
                 {
                     fileLockers.Add(new FileLockerEx(filePath,
-                        NativeMethods.FindLockingHandles(filePath, Filter)));
+                        NativeMethods.FindLockingHandles(filePath, filter)));
                 }
             });
 
@@ -418,7 +412,7 @@ namespace deadlock_dotnet_sdk
         /// <param name="filePaths">The full or partial paths of the files/directories that should be unlocked</param>
         public async Task UnlockExAsync(params string[] filePaths)
         {
-            List<FileLockerEx> fileLockers = await FindLockingHandlesAsync(filePaths);
+            List<FileLockerEx> fileLockers = await FindLockingHandlesAsync(HandlesFilter.FilesOnly, filePaths);
             foreach (FileLockerEx f in fileLockers)
             {
                 await UnlockExAsync(f);
