@@ -37,13 +37,27 @@
         }
 
         /// <summary>
-        /// TODO:
+        /// Invoke QuerySystemInformationEx() to get SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
+        /// objects, optionally including handles of non-file and/or unidentified object types
         /// </summary>
         /// <param name="path">The path of the file or directory</param>
-        /// <param name="filter"></param>
-        public FileLockerEx(string path, HandlesFilter filter)
+        /// <param name="filter">Include non-file handles and handles of unidentified object types. Default: Files Only</param>
+        /// <param name="rethrowExceptions">Assign True to rethrow exceptions</param>
+        /// <exception cref="UnauthorizedAccessException">DeadLock was denied debug permissions to access system, service, and admin processes. By default, Administrators are allowed this permission. Try running as Administrator.</exception>
+        public FileLockerEx(string path, HandlesFilter filter, bool rethrowExceptions = false)
         {
             Path = path;
+
+            try
+            {
+                System.Diagnostics.Process.EnterDebugMode();
+            }
+            catch (Exception e)
+            {
+                if (rethrowExceptions)
+                    throw new UnauthorizedAccessException("DeadLock was denied debug permissions to access system, service, and admin processes. For debug access, try running this app as Administrator or contact your technician.", e);
+            }
+
             Lockers = NativeMethods.FindLockingHandles(path, filter);
         }
 

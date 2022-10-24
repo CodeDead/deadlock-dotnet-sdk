@@ -24,7 +24,7 @@ namespace deadlock_dotnet_sdk.Domain;
 /// <summary>
 /// Collection of native methods
 /// </summary>
-internal static partial class NativeMethods
+internal static class NativeMethods
 {
     #region Variables
 
@@ -139,12 +139,10 @@ internal static partial class NativeMethods
     ///     A list of SafeFileHandleEx objects.
     ///     When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
     /// </returns>
-    /// <remarks>This might be arduously slow...</remarks>
+    /// <remarks><see href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debug-privilege">SeDebugMode</see> may be required for data from system and service processes. Restart app as admin and call <see cref="Process.EnterDebugMode</see>.</remarks>
     // TODO: Perhaps we should allow a new query without re-calling GetSystemHandleInfoEx().
     internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
-        Process.EnterDebugMode(); // just in case
-
         List<SafeFileHandleEx>? handles = GetSystemHandleInfoEx().ToArray().Cast<SafeFileHandleEx>().ToList();
         handles.RemoveAll(item => Discard(h: item));
         handles.Sort((a, b) => a.ProcessId.CompareTo(b.ProcessId));
