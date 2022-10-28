@@ -139,7 +139,7 @@ internal static class NativeMethods
     ///     A list of SafeFileHandleEx objects.
     ///     When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
     /// </returns>
-    /// <remarks><see href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debug-privilege">SeDebugMode</see> may be required for data from system and service processes. Restart app as admin and call <see cref="Process.EnterDebugMode</see>.</remarks>
+    /// <remarks><see href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debug-privilege">SeDebugMode</see> may be required for data from system and service processes. Restart app as admin and call <see cref="Process.EnterDebugMode"</see>.</remarks>
     // TODO: Perhaps we should allow a new query without re-calling GetSystemHandleInfoEx().
     internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
@@ -243,6 +243,8 @@ internal static class NativeMethods
 
         SYSTEM_HANDLE_INFORMATION_EX retVal = *pSysInfoBuffer;
 
+        retVal.CheckAccess();
+
         Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
         Marshal.FreeHGlobal((IntPtr)returnLength);
 
@@ -272,6 +274,14 @@ internal static class NativeMethods
 #pragma warning restore CS0649
 
         public Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX> AsSpan() => new(Handles, (int)NumberOfHandles);
+
+        /// <summary>
+        /// Test for memory access. System.AccessViolationException due to these values being in a protected memory range is a problem.
+        /// </summary>
+        internal void CheckAccess()
+        {
+            Console.WriteLine(Handles[0].HandleValue);
+        }
         public static implicit operator Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX>(SYSTEM_HANDLE_INFORMATION_EX value) => value.AsSpan();
     }
 
