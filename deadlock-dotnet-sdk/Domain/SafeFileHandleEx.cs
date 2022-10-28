@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Windows.Win32.Foundation;
 using Windows.Win32.Storage.FileSystem;
 using static deadlock_dotnet_sdk.Domain.NativeMethods;
@@ -100,5 +101,10 @@ public class SafeFileHandleEx : SafeHandleEx
                 _ => new Exception($"An undocumented error ({error}) was returned when querying a file handle for its path."),
             };
         }
+    }
+
+    public override string ToString()
+    {
+        return JsonSerializer.Serialize(this, options: new() { WriteIndented = true });
     }
 }
