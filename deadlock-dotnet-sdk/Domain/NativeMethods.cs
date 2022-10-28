@@ -143,9 +143,16 @@ internal static class NativeMethods
     // TODO: Perhaps we should allow a new query without re-calling GetSystemHandleInfoEx().
     internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
-        List<SafeFileHandleEx>? handles = GetSystemHandleInfoEx().ToArray().Cast<SafeFileHandleEx>().ToList();
+        List<SafeFileHandleEx>? handles = new();
+
+        foreach (var h in GetSystemHandleInfoEx())
+        {
+            handles.Add(new SafeFileHandleEx(h));
+        }
+
         handles.RemoveAll(item => Discard(h: item));
         handles.Sort((a, b) => a.ProcessId.CompareTo(b.ProcessId));
+
         return handles;
 
         bool Discard(SafeFileHandleEx h)
