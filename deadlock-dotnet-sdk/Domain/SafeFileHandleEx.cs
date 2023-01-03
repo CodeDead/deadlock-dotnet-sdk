@@ -1,5 +1,5 @@
+using System.Data;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using Windows.Win32.Foundation;
 using Windows.Win32.Storage.FileSystem;
 using static deadlock_dotnet_sdk.Domain.NativeMethods;
@@ -110,6 +110,30 @@ public class SafeFileHandleEx : SafeHandleEx
 
     public override string ToString()
     {
-        return JsonSerializer.Serialize(this, options: new() { WriteIndented = true });
+        string[] exLog = ExceptionLog.Cast<string>().ToArray();
+        for (int i = 0; i < exLog.Length; i++)
+        {
+            exLog[i] = $" {exLog[i]}".Replace("\n", "\n    ");
+        }
+
+        return @$"{GetType().Name} hash:{GetHashCode()}
+        {nameof(CreatorBackTraceIndex)} : {CreatorBackTraceIndex}
+        {nameof(FileFullPath)}          : {FileFullPath}
+        {nameof(IsDirectory)}           : {IsDirectory}
+        {nameof(FileName)}              : {FileName}
+        {nameof(GrantedAccess)}         : {GrantedAccess}
+        {nameof(handle)}                : {handle}
+        {nameof(HandleObjectType)}      : {HandleObjectType}
+        {nameof(HandleValue)}           : {HandleValue}
+        {nameof(IsClosed)}              : {IsClosed}
+        {nameof(IsFileHandle)}          : {IsFileHandle}
+        {nameof(IsInvalid)}             : {IsInvalid}
+        {nameof(Object)}                : {Object}
+        {nameof(ProcessCommandLine)}    : {ProcessCommandLine}
+        {nameof(ProcessId)}             : {ProcessId}
+        {nameof(ProcessMainModulePath)} : {ProcessMainModulePath}
+        {nameof(ProcessName)}           : {ProcessName}
+        {nameof(ExceptionLog)}          : ...        
+        " + exLog;
     }
 }
