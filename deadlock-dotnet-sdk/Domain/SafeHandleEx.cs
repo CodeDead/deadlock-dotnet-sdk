@@ -29,6 +29,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     internal SafeHandleEx(NativeMethods.SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(false)
     {
         SysHandleEx = sysHandleEx;
+
         try
         {
             HandleObjectType = SysHandleEx.GetHandleObjectType();
@@ -37,14 +38,19 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             ExceptionLog.Add(e);
         }
+
+        // Get additional details from the handle's owner process
         try
         {
-            //Process.EnterDebugMode(); Best practice: only call this once.
-
             /** Open handle for process */
             // PROCESS_QUERY_LIMITED_INFORMATION is necessary for QueryFullProcessImageName
             // PROCESS_QUERY_LIMITED_INFORMATION + PROCESS_VM_READ for reading PEB from the process's memory space.
             // if we need to duplicate a handle later, we'll use PROCESS_DUP_HANDLE
+
+            if (ProcessId == 4)
+            {
+                ProcessName = "System";
+            }
 
             HANDLE rawHandle = OpenProcess(
                 dwDesiredAccess: PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ,
@@ -150,6 +156,58 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     }
 
     /// <summary>
+    /// A wrapper for QueryFullProcessImageName, a system function that circumvents 32-bit process limitations when permitted the PROCESS_QUERY_LIMITED_INFORMATION right.
+    /// </summary>
+    /// <param name="hProcess">A SafeProcessHandle opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
+    /// <returns>The path to the executable image.</returns>
+    /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
+    /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
+    private unsafe static string GetFullProcessImageName(SafeProcessHandle hProcess)
+    {
+        if (hProcess.IsInvalid)
+            throw new ArgumentException("The process handle is invalid", nameof(hProcess));
+
+        uint size = 260 + 1;
+        uint bufferLength = size;
+        string retVal = "";
+
+        using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufferLength));
+        if (QueryFullProcessImageName(
+            hProcess: hProcess,
+            dwFlags: PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
+            lpExeName: buffer,
+            lpdwSize: ref size))
+        {
+            retVal = buffer.ToString();
+        }
+        else if (bufferLength < size)
+        {
+            using PWSTR newBuffer = Marshal.ReAllocHGlobal((IntPtr)buffer.Value, (IntPtr)size);
+            if (QueryFullProcessImageName(
+                hProcess,
+                PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
+                newBuffer,
+                ref size))
+            {
+                retVal = newBuffer.ToString();
+            }
+            else
+            {
+                // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
+                throw new Win32Exception();
+            }
+        }
+        else
+        {
+            // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
+            throw new Win32Exception();
+        }
+
+        // PWSTR instances are freed by their using blocks' finalizers
+        return retVal;
+    }
+
+    /// <summary>
     /// Try to get a process's command line from its PEB
     /// </summary>
     /// <param name="hProcess">A handle to the target process with the rights PROCESS_QUERY_LIMITED_INFORMATION and PROCESS_VM_READ</param>
@@ -208,57 +266,9 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     }
 
     /// <summary>
-    /// A wrapper for QueryFullProcessImageName
+    /// Release all resources owned by the current process that are associated with this handle.
     /// </summary>
-    /// <param name="hProcess">A SafeProcessHandle opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
-    /// <returns>The path to the executable image.</returns>
-    /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
-    /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
-    private unsafe static string GetFullProcessImageName(SafeProcessHandle hProcess)
-    {
-        if (hProcess.IsInvalid)
-            throw new ArgumentException("The process handle is invalid", nameof(hProcess));
-
-        uint size = 260 + 1;
-        uint bufferLength = size;
-        string retVal = "";
-
-        using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufferLength));
-        if (QueryFullProcessImageName(
-            hProcess: hProcess,
-            dwFlags: PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-            lpExeName: buffer,
-            lpdwSize: ref size))
-        {
-            retVal = buffer.ToString();
-        }
-        else if (bufferLength < size)
-        {
-            using PWSTR newBuffer = Marshal.ReAllocHGlobal((IntPtr)buffer.Value, (IntPtr)size);
-            if (QueryFullProcessImageName(
-                hProcess,
-                PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-                newBuffer,
-                ref size))
-            {
-                retVal = newBuffer.ToString();
-            }
-            else
-            {
-                // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
-                throw new Win32Exception();
-            }
-        }
-        else
-        {
-            // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
-            throw new Win32Exception();
-        }
-
-        // PWSTR instances are freed by their using blocks' finalizers
-        return retVal;
-    }
-
+    /// <returns></returns>
     protected override bool ReleaseHandle()
     {
         Close();
