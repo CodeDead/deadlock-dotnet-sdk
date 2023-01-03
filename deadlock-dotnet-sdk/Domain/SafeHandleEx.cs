@@ -7,6 +7,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.Security;
 using Windows.Win32.System.Threading;
 using static Windows.Win32.PInvoke;
+using ACCESS_MASK = PInvoke.Kernel32.ACCESS_MASK;
 
 namespace deadlock_dotnet_sdk.Domain;
 
@@ -92,7 +93,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     public ushort CreatorBackTraceIndex => SysHandleEx.CreatorBackTraceIndex;
     /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.GrantedAccess"/>
     public ACCESS_MASK GrantedAccess => SysHandleEx.GrantedAccess;
-
     /// <summary>
     /// The Type of the object as a string.
     /// </summary>
