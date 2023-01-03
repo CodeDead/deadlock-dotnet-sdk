@@ -24,20 +24,28 @@ DUPLICATE_HANDLE_OPTIONS
 RM_PROCESS_INFO
 
 //// PInvoke ////
+CheckTokenMembership
 CloseHandle
 DuplicateHandle
 GetFinalPathNameByHandle
 IsWow64Process
-NtQueryObject
 NtQueryInformationProcess
+NtQueryObject
 NtQuerySystemInformation
 OpenProcess
+OpenProcessToken
+OpenThread
+OpenThreadToken
 QueryFullProcessImageName
 ReadProcessMemory
 RmEndSession
 RmGetList
 RmRegisterResources
 RmStartSession
+
+//// System.Memory ////
+MEMORY_BASIC_INFORMATION32
+MEMORY_BASIC_INFORMATION64
 
 //// System.Threading ////
 PEB
@@ -47,3 +55,14 @@ PROCESSINFOCLASS
 //// System.WindowsProgramming ////
 PUBLIC_OBJECT_TYPE_INFORMATION
 
+//// does not exist in Win32Metadata ////
+//LPCVOID
+//SIZE_T 
+//OBJECT_TYPES_INFORMATION
+//OBJECT_TYPE_INFORMATION
+
+//// PInvoke005: This API is only available when targeting a specific CPU architecture. AnyCPU cannot generate this API. ////
+//MEMORY_BASIC_INFORMATION
+//VirtualQuery
+
+GENERIC_MAPPING
