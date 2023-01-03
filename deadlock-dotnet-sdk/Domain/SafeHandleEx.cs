@@ -1,10 +1,8 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 using Windows.Win32.Foundation;
-using Windows.Win32.Security;
 using Windows.Win32.System.Threading;
 using static Windows.Win32.PInvoke;
 using ACCESS_MASK = PInvoke.Kernel32.ACCESS_MASK;
@@ -84,10 +82,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 
     internal NativeMethods.SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX SysHandleEx { get; }
 
-    public unsafe void* Object => SysHandleEx.Object;
-    /// <summary>
-    /// cast to uint
-    /// </summary>
+    public unsafe UIntPtr Object => SysHandleEx.ObjectPointer;
     public uint ProcessId => (uint)SysHandleEx.UniqueProcessId;
     public nuint HandleValue => SysHandleEx.HandleValue;
     public ushort CreatorBackTraceIndex => SysHandleEx.CreatorBackTraceIndex;
