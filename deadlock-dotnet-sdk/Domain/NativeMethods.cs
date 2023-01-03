@@ -165,7 +165,7 @@ internal static partial class NativeMethods
                     return !filter.HasFlag(HandlesFilter.IncludeNonFiles); // When requested, keep non-File object handle. Else, discard.
                 }
                 // Discard handle if Query and file's path are not null and file's path does not contain query */
-                return (query is not null) && (h.FileFullPath is not null) && (!h.FileFullPath.Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)));
+                return (query is not null) && (h.FileFullPath?.Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)) == false);
             }
             else
             {
