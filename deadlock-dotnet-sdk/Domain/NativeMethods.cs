@@ -178,13 +178,14 @@ internal static partial class NativeMethods
     /// Get a Span of <see cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX"/> via <see cref="NtQuerySystemInformation"/>
     /// </summary>
     /// <remarks>Heavily influenced by ProcessHacker/SystemInformer</remarks>
-    private unsafe static Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX> GetSystemHandleInfoEx()
+    /// <exception cref="NTStatusException"></exception>
+    /// <exception cref="Win32Exception"></exception>
+    internal unsafe static ReadOnlySpan<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX> GetSystemHandleInfoEx()
     {
         const uint STATUS_INFO_LENGTH_MISMATCH = 0xC0000004;
         const uint PH_LARGE_BUFFER_SIZE = 256 * 1024 * 1024; // 256 Mebibytes
-        const uint STATUS_INSUFFICIENT_RESOURCES = 0xC000009A;
-        uint systemInformationLength = (uint)sizeof(SYSTEM_HANDLE_INFORMATION_EX);
-        SYSTEM_HANDLE_INFORMATION_EX* pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.AllocHGlobal(sizeof(SYSTEM_HANDLE_INFORMATION_EX));
+        uint systemInformationLength = (uint)Marshal.SizeOf<SYSTEM_HANDLE_INFORMATION_EX>();
+        SYSTEM_HANDLE_INFORMATION_EX* pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.AllocHGlobal(Marshal.SizeOf<SYSTEM_HANDLE_INFORMATION_EX>());
         uint returnLength = 0;
 
         NTSTATUS status = NtQuerySystemInformation(
@@ -194,9 +195,12 @@ internal static partial class NativeMethods
             ReturnLength: ref returnLength
             );
 
-        for (uint attempts = 0; status == STATUS_INFO_LENGTH_MISMATCH && attempts < 10; attempts++)
+        for (uint attempts = 0; status.Value == NTSTATUS.Code.STATUS_INFO_LENGTH_MISMATCH && attempts < 10; attempts++)
         {
-            systemInformationLength = returnLength;
+            /** The value of returnLength depends on how many handles are open.
+             Handles may be opened or closed before, during, and after this operation, so the return length is rarely correct.
+              */
+            systemInformationLength = (uint)(returnLength * 1.5);
             pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.ReAllocHGlobal((IntPtr)pSysInfoBuffer, (IntPtr)systemInformationLength);
 
             status = NtQuerySystemInformation(
@@ -207,11 +211,11 @@ internal static partial class NativeMethods
                 );
         }
 
-        if (!status.IsSuccessful)
+        if (status != NTSTATUS.Code.STATUS_SUCCESS)
         {
             // Fall back to using the previous code that we've used since Windows XP (dmex)
             systemInformationLength = 0x10000;
-            Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
+            //Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
             pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.ReAllocHGlobal((IntPtr)pSysInfoBuffer, (IntPtr)systemInformationLength);
 
             while ((status = NtQuerySystemInformation(
@@ -226,29 +230,23 @@ internal static partial class NativeMethods
 
                 // Fail if we're resizing the buffer to something very large.
                 if (systemInformationLength > PH_LARGE_BUFFER_SIZE)
-                {
-                    throw new Win32Exception(unchecked((int)STATUS_INSUFFICIENT_RESOURCES));
-                }
+                    throw new NTStatusException(NTSTATUS.Code.STATUS_BUFFER_OVERFLOW);
 
-                pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.AllocHGlobal((int)systemInformationLength);
+                pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.ReAllocHGlobal(pv: (IntPtr)pSysInfoBuffer, cb: (IntPtr)systemInformationLength);
             }
         }
 
-        if (!status.IsSuccessful)
+        if (status != NTSTATUS.Code.STATUS_SUCCESS)
         {
             Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
-            Marshal.FreeHGlobal((IntPtr)returnLength);
-            throw new Win32Exception((int)status);
+            throw new NTStatusException(status);
         }
 
-        SYSTEM_HANDLE_INFORMATION_EX retVal = *pSysInfoBuffer;
-
-        retVal.CheckAccess();
+        var retVal = (*pSysInfoBuffer).AsSpan();
 
         Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
-        Marshal.FreeHGlobal((IntPtr)returnLength);
 
-        return retVal.AsSpan();
+        return retVal;
     }
 
     #endregion Methods
