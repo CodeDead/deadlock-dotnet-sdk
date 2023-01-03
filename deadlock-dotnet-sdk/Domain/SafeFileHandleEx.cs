@@ -32,13 +32,17 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         try
         {
-            if (sysHandleEx.IsFileHandle())
+            if ((bool)(IsFileHandle = SysHandleEx.IsFileHandle()))
             {
-                FileFullPath = TryGetFinalPath();
-                if (FileFullPath != null)
+                try
                 {
+                    FileFullPath = TryGetFinalPath();
                     FileName = Path.GetFileName(FileFullPath);
-                    FileIsDirectory = (File.GetAttributes(FileFullPath) & FileAttributes.Directory) == FileAttributes.Directory;
+                    IsDirectory = (File.GetAttributes(FileFullPath) & FileAttributes.Directory) == FileAttributes.Directory;
+                }
+                catch (Exception e)
+                {
+                    ExceptionLog.Add(e);
                 }
             }
             else
@@ -54,7 +58,8 @@ public class SafeFileHandleEx : SafeHandleEx
 
     public string? FileFullPath { get; }
     public string? FileName { get; }
-    public bool? FileIsDirectory { get; private set; }
+    public bool? IsDirectory { get; }
+    public bool? IsFileHandle { get; }
 
     /// <summary>
     /// Try to get the absolute path of the file. Traverses filesystem links (e.g. symbolic, junction) to get the 'real' path.
@@ -79,7 +84,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 buffer = Marshal.ReAllocHGlobal(buffer, (IntPtr)length);
                 fullName = new((char*)buffer);
 
-                bufLength = GetFinalPathNameByHandle(SysHandleEx.ToSafeFileHandle(), fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+                bufLength = GetFinalPathNameByHandle(ToSafeFileHandle(), fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
             }
             return fullName.ToString();
         }

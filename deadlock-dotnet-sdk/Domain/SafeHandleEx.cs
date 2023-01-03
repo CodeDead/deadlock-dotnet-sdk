@@ -262,8 +262,5 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         return IsClosed;
     }
 
-    /// <summary>
-    /// Serialize the current instance to JSON-formatted text
-    /// </summary>
-    public override string? ToString() => JsonSerializer.Serialize(this, new JsonSerializerOptions() { WriteIndented = true });
+    internal SafeHandle ToSafeFileHandle() => SysHandleEx.ToSafeFileHandle();
 }
