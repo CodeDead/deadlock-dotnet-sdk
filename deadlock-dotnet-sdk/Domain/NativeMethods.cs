@@ -1,14 +1,14 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using deadlock_dotnet_sdk.Exceptions;
-using Microsoft.Win32.SafeHandles;
+using PInvoke;
 using Windows.Win32.Foundation;
-using Windows.Win32.Security;
 using Windows.Win32.System.RestartManager;
 using Windows.Win32.System.WindowsProgramming;
 using static deadlock_dotnet_sdk.Domain.FileLockerEx;
 using static Windows.Win32.PInvoke;
+using NTSTATUS = PInvoke.NTSTATUS;
+using Win32Exception = System.ComponentModel.Win32Exception;
 
 // Re: StructLayout
 // "C#, Visual Basic, and C++ compilers apply the Sequential layout value to structures by default."
@@ -24,7 +24,7 @@ namespace deadlock_dotnet_sdk.Domain;
 /// <summary>
 /// Collection of native methods
 /// </summary>
-internal static class NativeMethods
+internal static partial class NativeMethods
 {
     #region Variables
 
@@ -252,133 +252,4 @@ internal static class NativeMethods
     }
 
     #endregion Methods
-
-    #region Structs
-
-    /// <summary>
-    /// The <see href="https://www.geoffchappell.com/studies/windows/km/ntoskrnl/api/ex/sysinfo/handle_ex.htm"><c>SYSTEM_HANDLE_INFORMATION_EX</c></see>
-    /// struct is 0x24 or 0x38 bytes in 32-bit and 64-bit Windows, respectively. However, Handles is a variable-length array.
-    /// </summary>
-    public unsafe readonly struct SYSTEM_HANDLE_INFORMATION_EX
-    {
-#pragma warning disable CS0649
-
-        /// <summary>
-        /// As documented unofficially, NumberOfHandles is a 4-byte or 8-byte ULONG_PTR in 32-bit and 64-bit Windows, respectively.<br/>
-        /// This is not to be confused with uint* or ulong*.
-        /// </summary>
-        public readonly UIntPtr NumberOfHandles;
-        public readonly UIntPtr Reserved;
-        public readonly SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX* Handles;
-
-#pragma warning restore CS0649
-
-        public Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX> AsSpan() => new(Handles, (int)NumberOfHandles);
-
-        /// <summary>
-        /// Test for memory access. System.AccessViolationException due to these values being in a protected memory range is a problem.
-        /// </summary>
-        internal void CheckAccess()
-        {
-            Console.WriteLine(Handles[0].HandleValue);
-        }
-        public static implicit operator Span<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX>(SYSTEM_HANDLE_INFORMATION_EX value) => value.AsSpan();
-    }
-
-    /// <summary><para>
-    /// The <see href="https://www.geoffchappell.com/studies/windows/km/ntoskrnl/api/ex/sysinfo/handle_table_entry_ex.htm">
-    /// SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX</see>
-    /// structure is a recurring element in the <see href="https://www.geoffchappell.com/studies/windows/km/ntoskrnl/api/ex/sysinfo/handle_ex.htm">
-    /// SYSTEM_HANDLE_INFORMATION_EX </see>
-    /// struct that a successful call to <see href="https://docs.microsoft.com/en-us/windows/win32/sysinfo/zwquerysysteminformation">
-    /// ZwQuerySystemInformation</see>
-    /// or <see href="https://docs.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntquerysysteminformation">
-    /// NtQuerySystemInformation</see>
-    /// produces in its output buffer when given the information class <see cref="SystemHandleInformation">
-    /// SystemHandleInformation (0x10)</see>.</para>
-    /// This inline doc was supplemented by ProcessHacker's usage of this struct.
-    /// </summary>
-    public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
-    {
-#pragma warning disable CS0649
-        public readonly unsafe void* Object;
-        /// <summary>
-        /// ULONG_PTR, cast to HANDLE, int, or uint
-        /// </summary>
-        public readonly HANDLE UniqueProcessId;
-        /// <summary>
-        /// ULONG_PTR, cast to HANDLE
-        /// </summary>
-        public readonly HANDLE HandleValue;
-        /// <summary>
-        /// This is a bitwise "Flags" data type.
-        /// See the "Granted Access" column in the Handles section of a process properties window in ProcessHacker.
-        /// </summary>
-        public readonly ACCESS_MASK GrantedAccess; // ULONG
-        public readonly ushort CreatorBackTraceIndex; // USHORT
-        /// <summary>ProcessHacker defines a little over a dozen handle-able object types.</summary>
-        public readonly ushort ObjectTypeIndex; // USHORT
-        /// <summary><see href="https://docs.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_object_attributes#members"/></summary>
-        public readonly uint HandleAttributes; // ULONG
-#pragma warning disable RCS1213, CS0169 // Remove unused field declaration. csharp(RCS1213) | Roslynator
-        private readonly uint Reserved;
-#pragma warning restore RCS1213, CS0649, CS0169
-
-        /// <summary>
-        /// Get the Type of the object as a string
-        /// </summary>
-        /// <exception cref="Exception">P/Invoke function NtQueryObject failed. See Exception data.</exception>
-        /// <returns>The Type of the object as a string.</returns>
-        public unsafe string GetHandleObjectType()
-        {
-            /* Query the object type */
-            string typeName;
-            PUBLIC_OBJECT_TYPE_INFORMATION* objectTypeInfo = (PUBLIC_OBJECT_TYPE_INFORMATION*)Marshal.AllocHGlobal(sizeof(PUBLIC_OBJECT_TYPE_INFORMATION));
-            uint* returnLength = (uint*)Marshal.AllocHGlobal(sizeof(uint));
-            NTSTATUS status;
-
-            if ((status = NtQueryObject(HandleValue, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, objectTypeInfo, (uint)sizeof(PUBLIC_OBJECT_TYPE_INFORMATION), returnLength)).SeverityCode == NTSTATUS.Severity.Success)
-            {
-                typeName = objectTypeInfo->TypeName.ToStringLength();
-                Marshal.FreeHGlobal((IntPtr)objectTypeInfo);
-            }
-            else
-            {
-                Marshal.FreeHGlobal((IntPtr)objectTypeInfo);
-                throw new Exception("P/Invoke function NtQueryObject failed. See Exception data.", status.GetNTStatusException());
-            }
-            return typeName;
-        }
-
-        /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
-        /// <returns>True if the handle is for a file or directory.</returns>
-        /// <remarks>Based on source of C/C++ projects <see href="https://www.x86matthew.com/view_post?id=hijack_file_handle">Hijack File Handle</see> and <see href="https://github.com/adamkramer/handle_monitor">Handle Monitor</see></remarks>
-        /// <exception cref="Exception">Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. See InnerException for details.</exception>
-        public bool IsFileHandle()
-        {
-            try
-            {
-                string type = GetHandleObjectType();
-                return !string.IsNullOrWhiteSpace(type) && string.CompareOrdinal(type, "File") == 0;
-            }
-            catch (Exception e)
-            {
-                throw new Exception("Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. See InnerException for details.", e);
-            }
-        }
-
-        /// <summary>
-        /// Try to cast this handle's <see cref="HandleValue"/> to a SafeFileHandle;
-        /// </summary>
-        /// <returns>A <see cref="SafeFileHandle"/> if this handle's object is a data/directory File.</returns>
-        /// <exception cref="Exception">The handle's object is not a File -OR- perhaps NtQueryObject() failed. See <see cref="Exception.InnerException"/> for details.</exception>
-        public SafeFileHandle ToSafeFileHandle()
-        {
-            return IsFileHandle()
-                ? (new((nint)HandleValue, (int)UniqueProcessId == Environment.ProcessId))
-                : throw new Exception("The handle's object is not a File -OR- NtQueryObject() failed. See InnerException for details.");
-        }
-    }
-
-    #endregion Structs
 }
