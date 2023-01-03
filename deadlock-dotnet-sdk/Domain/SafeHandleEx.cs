@@ -50,9 +50,9 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             );
 
             if (rawHandle.IsNull)
-                throw new Win32Exception("Failed to open process handle with access rights 'PROCESS_QUERY_LIMITED_INFORMATION' and 'PROCESS_VM_READ'. The following information will be unavailable: main module full name, process name, ");
+                throw new Win32Exception("Failed to open process handle with access rights 'PROCESS_QUERY_LIMITED_INFORMATION' and 'PROCESS_VM_READ'. The following information will be unavailable: main module full name, process name, process' startup command line");
 
-            SafeProcessHandle hProcess = new(rawHandle, true);
+            using SafeProcessHandle hProcess = new(rawHandle, true);
 
             /** Get main module's full path */
             ProcessMainModulePath = GetFullProcessImageName(hProcess);
@@ -64,7 +64,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             }
 
             /** Get process's possibly-overwritten command line from the PEB struct in its memory space */
-            GetProcessCommandLine(hProcess);
+            ProcessCommandLine = GetProcessCommandLine(hProcess);
         }
         catch (Exception e)
         {
@@ -89,8 +89,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// </summary>
     /// <value></value>
     public string? HandleObjectType { get; }
-
-    public string? ProcessCommandLine { get; private set; }
+    public string? ProcessCommandLine { get; init; }
     public string? ProcessMainModulePath { get; }
     public string? ProcessName { get; }
 
@@ -154,7 +153,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <exception cref="NotImplementedException">Reading a 64-bit process's PEB from a 32-bit process (under WOW64) is not yet implemented.</exception>
     /// <exception cref="Win32Exception">Failed to read the process's PEB in memory. While trying to read the PEB, the operation crossed into an area of the process that is inaccessible.</exception>
     /// <exception cref="Exception">NtQueryInformationProcess failed to query the process's 'PROCESS_BASIC_INFORMATION'</exception>
-    private unsafe void GetProcessCommandLine(SafeProcessHandle hProcess)
+    private unsafe static string GetProcessCommandLine(SafeProcessHandle hProcess)
     {
         /* Get PROCESS_BASIC_INFORMATION */
         uint sysInfoLength = (uint)Marshal.SizeOf<PROCESS_BASIC_INFORMATION>();
@@ -162,7 +161,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         IntPtr sysInfo = Marshal.AllocHGlobal((int)sysInfoLength);
         NTSTATUS status = (NTSTATUS)0;
         uint retLength = 0;
-
         if ((status = NtQueryInformationProcess(
             hProcess,
             PROCESSINFOCLASS.ProcessBasicInformation,
@@ -171,7 +169,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             ref retLength))
             .IsSuccessful)
         {
-            processBasicInfo = Marshal.PtrToStructure<PROCESS_BASIC_INFORMATION>(sysInfo);
+            processBasicInfo = Marshal.PtrToStructure<PROCESS_BASIC_INFORMATION>(sysInfo); //DevSkim: ignore DS104456 
 
             // if our process is WOW64, we need to account for different pointer sizes if
             // the target process is 64-bit
@@ -190,8 +188,8 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             IntPtr buf = Marshal.AllocHGlobal(sizeof(PEB));
             if (ReadProcessMemory(hProcess, processBasicInfo.PebBaseAddress, (void*)buf, (nuint)sizeof(PEB), null))
             {
-                PEB peb = Marshal.PtrToStructure<PEB>(buf);
-                ProcessCommandLine = (*peb.ProcessParameters).CommandLine.ToStringLength();
+                PEB peb = Marshal.PtrToStructure<PEB>(buf); //DevSkim: ignore DS104456 
+                return (*peb.ProcessParameters).CommandLine.ToStringLength();
             }
             else
             {
