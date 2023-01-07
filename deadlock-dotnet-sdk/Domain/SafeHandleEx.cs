@@ -50,29 +50,31 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             {
                 ProcessName = "System";
             }
-
-            HANDLE rawHandle = OpenProcess(
-                dwDesiredAccess: PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ,
-                bInheritHandle: (BOOL)false,
-                dwProcessId: ProcessId
-            );
-
-            if (rawHandle.IsNull)
-                throw new Win32Exception("Failed to open process handle with access rights 'PROCESS_QUERY_LIMITED_INFORMATION' and 'PROCESS_VM_READ'. The following information will be unavailable: main module full name, process name, process' startup command line");
-
-            using SafeProcessHandle hProcess = new(rawHandle, true);
-
-            /** Get main module's full path */
-            ProcessMainModulePath = GetFullProcessImageName(hProcess);
-
-            /** Get Process's name */
-            if (!string.IsNullOrWhiteSpace(ProcessMainModulePath))
+            else
             {
-                ProcessName = Path.GetFileNameWithoutExtension(ProcessMainModulePath);
-            }
+                HANDLE rawHandle = OpenProcess(
+                    dwDesiredAccess: PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ,
+                    bInheritHandle: (BOOL)false,
+                    dwProcessId: ProcessId
+                );
 
-            /** Get process's possibly-overwritten command line from the PEB struct in its memory space */
-            ProcessCommandLine = GetProcessCommandLine(hProcess);
+                if (rawHandle.IsNull)
+                    throw new Win32Exception("Failed to open process handle with access rights 'PROCESS_QUERY_LIMITED_INFORMATION' and 'PROCESS_VM_READ'. The following information will be unavailable: main module full name, process name, process' startup command line");
+
+                using SafeProcessHandle hProcess = new(rawHandle, true);
+
+                /** Get main module's full path */
+                ProcessMainModulePath = GetFullProcessImageName(hProcess);
+
+                /** Get Process's name */
+                if (!string.IsNullOrWhiteSpace(ProcessMainModulePath))
+                {
+                    ProcessName = Path.GetFileNameWithoutExtension(ProcessMainModulePath);
+                }
+
+                /** Get process's possibly-overwritten command line from the PEB struct in its memory space */
+                ProcessCommandLine = GetProcessCommandLine(hProcess);
+            }
         }
         catch (Exception e)
         {
