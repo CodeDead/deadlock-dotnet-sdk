@@ -1,7 +1,7 @@
 using Windows.Win32.Foundation;
 using ACCESS_MASK = PInvoke.Kernel32.ACCESS_MASK;
 
-namespace Windows.Win32;
+namespace Windows.Win32.System.WindowsProgramming;
 internal struct OBJECT_TYPE_INFORMATION
 {
 #pragma warning disable CS0649

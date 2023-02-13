@@ -1,6 +1,4 @@
-using Microsoft.VisualBasic;
-
-namespace Windows.Win32;
+namespace Windows.Win32.System.WindowsProgramming;
 struct OBJECT_TYPES_INFORMATION : IEquatable<OBJECT_TYPES_INFORMATION>
 {
     public uint NumberOfTypes = 0;

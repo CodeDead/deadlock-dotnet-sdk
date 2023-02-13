@@ -6,11 +6,18 @@ using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace Windows.Win32.System.Threading;
 
-/// <summary>
-/// This struct is not fully emitted by Win32Metadata. The definition in ntddk.h of Windows SDK 10.0.22621.0 has many more documented fields
+/// <summary>This struct is not fully emitted by Win32Metadata. The definition in ntddk.h of Windows SDK 10.0.22621.0 has many more documented fields which are included in this manual definition
+/// See https://github.com/winsiderss/systeminformer@master/-/blob/phnt/include/ntpsapi.h
 /// </summary>
 readonly struct PROCESS_BASIC_INFORMATION
 {
+    public NTSTATUS ExitStatus { get; }
+    /// <summary>
+    /// The address of the PEB relative to its process's memory. Read object via <see cref="Peb"/>
+    /// </summary>
+    public unsafe PEB* PebBaseAddress { get; }
+    public UIntPtr AffinityMask { get; }
+    public KPRIORITY BasePriority { get; }
     private readonly nuint uniqueProcessId;
     private readonly UIntPtr inheritedFromUniqueProcessId;
 
@@ -19,36 +26,6 @@ readonly struct PROCESS_BASIC_INFORMATION
     /// <value></value>
     /// </summary>
     public uint ProcessId => (uint)uniqueProcessId;
-
-    public NTSTATUS ExitStatus { get; }
-
-    /// <summary>
-    /// The address of the PEB relative to its process's memory. Read object via <see cref="Peb"/>
-    /// </summary>
-    public unsafe PEB* PebBaseAddress { get; }
-
-    /// <summary>
-    /// Invoke ReadProcessMemory to copy the target process's PEB to our memory
-    /// </summary>
-    /// <value></value>
-    public unsafe PEB Peb
-    {
-        get
-        {
-            if (ProcessId == Environment.ProcessId)
-                return *PebBaseAddress;
-
-            SafeProcessHandle hProcess = GetProcessHandle(ProcessId);
-            PEB peb;
-            nuint bytesRead;
-            return !PInvoke.ReadProcessMemory(hProcess, PebBaseAddress, &peb, (nuint)Marshal.SizeOf(typeof(PEB)), &bytesRead)
-                ? throw new Win32Exception()
-                : peb;
-        }
-    }
-
-    public UIntPtr AffinityMask { get; }
-    public KPRIORITY BasePriority { get; }
     public uint InheritedFromUniqueProcessId => (uint)inheritedFromUniqueProcessId;
 
     /// <summary>
@@ -59,7 +36,7 @@ readonly struct PROCESS_BASIC_INFORMATION
     /// <param name="hProcess">A Process handle with the PROCESS_VM_READ and PROCESS_QUERY_LIMITED_INFORMATION rights. This handle must remain open for the PEB pointer to be readable.</param>
     /// <remarks>If UniqueProcessId does not match the current process's ID, read all pointers with NtQueryVirtualMemory</remarks>
     /// <exception cref="NTStatusException">NtQueryInformationProcess returned an error code</exception>
-    // TODO: wrap in object containing an object of this Type, a process handle for NtQueryVirtualMemory, and a "shortcut" method for calling that function
+    // TODO: wrap in object containing an object of this Type, a process handle for NtQueryVirtualMemory, and a wrapper method for calling that function
     // https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntqueryvirtualmemory
     public PROCESS_BASIC_INFORMATION(SafeProcessHandle hProcess)
     {
@@ -89,4 +66,24 @@ readonly struct PROCESS_BASIC_INFORMATION
         else
             return new SafeProcessHandle(hProcess, true);
     }
+
+    /// <summary>
+    /// Invoke ReadProcessMemory to copy the target process's PEB to our memory
+    /// </summary>
+    /// <value></value>
+    /// <exception cref="Win32Exception">Failed to read process memory. Check Win32 error and message for more info.</exception>
+    public unsafe PEB GetPeb()
+    {
+        if (ProcessId == Environment.ProcessId)
+            return *PebBaseAddress;
+
+        SafeProcessHandle hProcess = GetProcessHandle(ProcessId);
+        PEB peb;
+        nuint bytesRead;
+        return !PInvoke.ReadProcessMemory(hProcess, PebBaseAddress, &peb, (nuint)Marshal.SizeOf<PEB>(), &bytesRead)
+            ? throw new Win32Exception()
+            : peb;
+    }
+
+    public unsafe PEB_Ex GetPebEx() => new(ProcessId, GetPeb());
 }
