@@ -2,6 +2,8 @@ using System.ComponentModel;
 
 namespace deadlock_dotnet_sdk.Domain
 {
+    //TODO: Add RefreshList(): Check if a handle is closed. If true, remove if from Lockers. SafeHandle.IsClosed may be unreliable depending on the runtime's internal logic. It might only work as intended if the handle is managed by the current runtime.
+    //https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/SafeHandle.cs
     public class FileLockerEx
     {
         #region Properties
@@ -9,12 +11,10 @@ namespace deadlock_dotnet_sdk.Domain
         /// <summary>
         /// Get or set the path of the file that is locked
         /// </summary>
-        public string Path { get; set; }
+        public string Path { get; }
         public HandlesFilter Filter { get; }
 
-        /// <summary>
-        /// Get or set the List of handles that are locking the file
-        /// </summary>
+        /// <summary>Get or set the List of handles that are locking the file</summary>
         public List<SafeFileHandleEx> Lockers { get; set; }
 
         #endregion Properties
@@ -62,7 +62,7 @@ namespace deadlock_dotnet_sdk.Domain
             }
             catch (Exception e)
             {
-                var uae = new UnauthorizedAccessException("DeadLock was denied debug permissions to access system, service, and admin processes. For debug access, try running this app as Administrator or contact your technician.", e);
+                var uae = new UnauthorizedAccessException("DeadLock failed to check if it already has Debug permission -OR- was denied debug permissions to access system, service, and admin processes. Some functionality won't work. For debug access, try running this app as Administrator.", e);
                 if (rethrowExceptions)
                     throw uae;
                 else
