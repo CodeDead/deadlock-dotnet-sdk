@@ -217,16 +217,35 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 
-    private unsafe static string GetProcessCommandLine(uint processId)
+    private static (string? v, Exception? ex) GetProcessCommandLine(uint processId)
     {
-        if (processId == (uint)Environment.ProcessId)
-            return Environment.CommandLine;
+        Exception exceptionData = null;
 
-        Process.EnterDebugMode();
-        using SafeProcessHandle hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, processId);
+        if (processId == (uint)Environment.ProcessId)
+            return (Environment.CommandLine, null);
+
+        try
+        {
+            if (!IsDebugModeEnabled())
+                Process.EnterDebugMode();
+        }
+        catch (Exception ex)
+        {
+            exceptionData = ex; // What to do with this exception?
+        }
+
+        using SafeProcessHandle hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, processId);
         if (hProcess.IsInvalid)
-            throw new Win32Exception();
-        else return GetProcessCommandLine(hProcess);
+            return (null, new Win32Exception());
+
+        try
+        {
+            return GetProcessCommandLine(hProcess);
+        }
+        catch (Exception ex)
+        {
+            return (null, ex);
+        }
     }
 
     /// <summary>

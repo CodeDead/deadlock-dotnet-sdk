@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace deadlock_dotnet_sdk.Domain
 {
@@ -57,7 +57,8 @@ namespace deadlock_dotnet_sdk.Domain
 
             try
             {
-                System.Diagnostics.Process.EnterDebugMode();
+                if (!Windows.Win32.PInvoke.IsDebugModeEnabled())
+                    System.Diagnostics.Process.EnterDebugMode();
             }
             catch (Exception e)
             {
