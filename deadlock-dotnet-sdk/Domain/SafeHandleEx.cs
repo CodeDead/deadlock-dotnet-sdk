@@ -273,34 +273,51 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
         {
             const uint ProcessCommandLineInformation = 60u;
-            uint bufferLength = (uint)Marshal.SizeOf<UNICODE_STRING>() + 260u;
-            UNICODE_STRING* pString = (UNICODE_STRING*)Marshal.AllocHGlobal((int)bufferLength);
+            uint bufferLength = (uint)Marshal.SizeOf<UNICODE_STRING>() + 2048u;
+            using SafeBuffer<byte> safeBuffer = new(numBytes: bufferLength);
 
             status = NtQueryInformationProcess(
                 hProcess,
                 (PROCESSINFOCLASS)ProcessCommandLineInformation,
-                pString,
+                (void*)safeBuffer.DangerousGetHandle(),
                 bufferLength,
                 ref returnLength
                 );
 
             if (status == Code.STATUS_INFO_LENGTH_MISMATCH)
             {
+#if DEBUG
+                Console.Out.WriteLine(
+                    $"bufferLength: {bufferLength}\n" +
+                    $"returnLength: {returnLength}");
                 bufferLength = returnLength;
-                pString->MaximumLength = (ushort)returnLength;
-                pString->Buffer = new((char*)Marshal.ReAllocHGlobal((IntPtr)pString->Buffer.Value, (IntPtr)bufferLength));
+#endif
+                try
+                {
+                    // the native call to LocalReAlloc (via Marshal.ReAllocHGlobal) sometimes returns a null pointer. This is a Legacy function. Why does .NET not use malloc/realloc?
+                    //pString->Buffer = new((char*)Marshal.ReAllocHGlobal((IntPtr)pString->Buffer.Value, (IntPtr)bufferLength));
+                    safeBuffer.Reallocate(numBytes: returnLength);
 
-                status = NtQueryInformationProcess(
-                    hProcess,
-                    (PROCESSINFOCLASS)ProcessCommandLineInformation,
-                    pString,
-                    bufferLength,
-                    ref returnLength
-                    );
+                    status = NtQueryInformationProcess(
+                        hProcess,
+                        (PROCESSINFOCLASS)ProcessCommandLineInformation,
+                        (void*)safeBuffer.DangerousGetHandle(),
+                        bufferLength,
+                        ref returnLength
+                        );
+                }
+                catch (OutOfMemoryException) // ReAllocHGlobal received a null pointer, but didn't check the error code
+                {
+                    // none of these were of interest...
+                    //var pinerr = Marshal.GetLastPInvokeError();
+                    //var syserr = Marshal.GetLastSystemError();
+                    //var winerr = Marshal.GetLastWin32Error();
+                    throw;
+                }
             }
 
             if (status.IsSuccessful)
-                return pString->ToStringLength();
+                return safeBuffer.Read<UNICODE_STRING>(0).ToStringZ() ?? string.Empty;
             else
                 throw new NTStatusException(status);
         }
@@ -312,7 +329,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             */
             if (weAre32BitAndTheyAre64Bit) /** This process is 32-bit, that process is 64-bit */
             {
-                using SafeBuffer<byte> buffer = new(true);
+                using SafeBuffer<byte> buffer = new(numBytes: 0);
                 PROCESS_BASIC_INFORMATION64 basicInfo = default;
                 PEB64 peb = default;
                 RTL_USER_PROCESS_PARAMETERS64 parameters = default;
@@ -362,7 +379,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             }
             else if (weAre64BitAndTheyAre32Bit) /** This is 64-bit, that is 32-bit */
             {
-                using SafeBuffer<PROCESS_BASIC_INFORMATION32> buffer = new(true);
+                using SafeBuffer<PROCESS_BASIC_INFORMATION32> buffer = new(numElements: 1);
                 PROCESS_BASIC_INFORMATION32 basicInfo = default;
                 PEB32 peb = default;
                 RTL_USER_PROCESS_PARAMETERS32 parameters = default;
@@ -420,13 +437,12 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             }
             else /** this process and that process are the same bit architecture */
             {
-                using SafeBuffer<PROCESS_BASIC_INFORMATION> buffer = new(true);
+                using SafeBuffer<PROCESS_BASIC_INFORMATION> buffer = new(numElements: 1);
                 PROCESS_BASIC_INFORMATION basicInfo = default;
                 PEB peb = default;
                 RTL_USER_PROCESS_PARAMETERS parameters = default;
 
                 // Get the PEB address.
-                buffer.Initialize<PROCESS_BASIC_INFORMATION>(numElements: 1);
                 status = NtQueryInformationProcess(
                     hProcess,
                     PROCESSINFOCLASS.ProcessBasicInformation,
