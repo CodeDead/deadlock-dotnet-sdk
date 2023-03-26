@@ -116,7 +116,7 @@ namespace deadlock_dotnet_sdk
         }
 
         /// <summary>
-        /// Unlock one or more files by killing all the processes that are holding a handle on the files 
+        /// Unlock one or more files by killing all the processes that are holding a handle on the files
         /// </summary>
         /// <param name="fileLockers">The FileLocker objects that contain the List of Process objects that are locking a file</param>
         public void Unlock(params FileLocker[] fileLockers)
@@ -145,7 +145,7 @@ namespace deadlock_dotnet_sdk
         }
 
         /// <summary>
-        /// Unlock one or more files asynchronously by killing all the processes that are holding a handle on the files 
+        /// Unlock one or more files asynchronously by killing all the processes that are holding a handle on the files
         /// </summary>
         /// <param name="fileLockers">The FileLocker objects that contain the List of Process objects that are locking a file</param>
         public async Task UnlockAsync(params FileLocker[] fileLockers)
@@ -237,7 +237,7 @@ namespace deadlock_dotnet_sdk
         /// </summary>
         /// <param name="filter">By default, only handles whose object's Type is confirmed to "File" are returned. Optionally, handles for data pipes, printers, and other Types can be included, in addition to handles whose object Type could not be identified for some reason.</param>
         /// <returns>The List of <see cref="FileLockerEx"/> objects that contains a List of handles that are locking one or multiple files and/or directories</returns>
-        public List<FileLockerEx> FindLockingHandles(HandlesFilter filter, List<WarningException> warnings, params string[] filePaths)
+        public List<FileLockerEx> FindLockingHandles(HandlesFilter filter, ref List<WarningException> warnings, params string[] filePaths)
         {
             List<FileLockerEx> fileLockers = new();
             warnings = new();
