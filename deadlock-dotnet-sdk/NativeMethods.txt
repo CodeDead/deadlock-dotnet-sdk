@@ -2,7 +2,7 @@
 //  for it to be generated somewhere under the namespace "Windows.Win32"
 //
 // # Where can I find X?
-// Most of what you'll see in the WDK is not in the Win32 API.
+// Most of what you'll see in the WDK (Windows Driver Kit) is not in the Win32 API.
 // As such, CsWin32 will not generate code for Kernel API
 //  except for some Kernel32 definitions.
 // 
@@ -19,6 +19,7 @@
 BOOLEAN
 HANDLE
 DUPLICATE_HANDLE_OPTIONS
+HANDLE_FLAGS
 
 //// Restart Manager ////
 RM_PROCESS_INFO
@@ -27,8 +28,11 @@ RM_PROCESS_INFO
 CheckTokenMembership
 CloseHandle
 DuplicateHandle
+GetFileType
 GetFinalPathNameByHandle
+GetHandleInformation
 IsWow64Process
+LookupPrivilegeValue
 NtQueryInformationProcess
 NtQueryObject
 NtQuerySystemInformation
@@ -36,6 +40,8 @@ OpenProcess
 OpenProcessToken
 OpenThread
 OpenThreadToken
+PrivilegeCheck
+PRIVILEGE_SET_ALL_NECESSARY
 QueryFullProcessImageName
 ReadProcessMemory
 RmEndSession
@@ -68,3 +74,8 @@ PUBLIC_OBJECT_TYPE_INFORMATION
 GENERIC_MAPPING
 LDR_DATA_TABLE_ENTRY
 RTL_CRITICAL_SECTION
+
+//SE_DEBUG_PRIVILEGE // PInvoke001
+SE_DEBUG_NAME
+//ProcessProtectionInformation // PInvoke001: Method, type or constant "ProcessProtectionInformation" not found.
+//PS_PROTECTION //  PInvoke001: Method, type or constant "PS_PROTECTION" not found.
