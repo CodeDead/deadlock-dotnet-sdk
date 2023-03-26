@@ -21,6 +21,7 @@
     <FileVersion>1.0.1.0</FileVersion>
     <Version>1.0.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\lock-fill.png">
