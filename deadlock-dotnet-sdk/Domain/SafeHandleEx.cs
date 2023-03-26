@@ -248,13 +248,12 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 
-    /// <summary>
-    /// Try to get a process's command line from its PEB
-    /// </summary>
+    /// <summary>Try to get a process's command line from its PEB</summary>
     /// <param name="hProcess">A handle to the target process with the rights PROCESS_QUERY_LIMITED_INFORMATION and PROCESS_VM_READ</param>
     /// <exception cref="NotImplementedException">Reading a 64-bit process's PEB from a 32-bit process (under WOW64) is not yet implemented.</exception>
     /// <exception cref="Win32Exception">Failed to read the process's PEB in memory. While trying to read the PEB, the operation crossed into an area of the process that is inaccessible.</exception>
     /// <exception cref="Exception">NtQueryInformationProcess failed to query the process's 'PROCESS_BASIC_INFORMATION'</exception>
+    /// <exception cref="OutOfMemoryException">ReAllocHGlobal received a null pointer, but didn't check the error code. This is not a real OutOfMemoryException</exception>
     private unsafe static string GetProcessCommandLine(SafeProcessHandle hProcess)
     {
         if (hProcess.IsInvalid)

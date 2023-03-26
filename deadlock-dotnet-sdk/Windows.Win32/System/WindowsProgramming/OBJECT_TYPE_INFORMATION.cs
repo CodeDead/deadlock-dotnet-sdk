@@ -34,6 +34,7 @@ internal struct OBJECT_TYPE_INFORMATION
     public ObjectTypeInformation ToManaged() => new(this);
 }
 
+/// <summary>A copy of OBJECT_TYPE_INFORMATION using a managed string instead of UNICODE_STRING</summary>
 public struct ObjectTypeInformation
 {
     internal ObjectTypeInformation(OBJECT_TYPE_INFORMATION oti)
