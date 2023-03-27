@@ -101,7 +101,7 @@ internal struct PEB64
     /// <summary>Compatibility: 3.51 and higher</summary>
     [FieldOffset(0xBC)] internal readonly uint NtGlobalFlag;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    [FieldOffset(0xC0)] internal readonly LARGE_INTEGER CriticalSectionTimeout;
+    [FieldOffset(0xC0)] internal readonly long CriticalSectionTimeout;
 
     #region Appended for Windows NT 3.51
     /// <summary>Compatibility: 3.51 and higher</summary>
