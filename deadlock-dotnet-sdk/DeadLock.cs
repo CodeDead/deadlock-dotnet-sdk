@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using deadlock_dotnet_sdk.Domain;
 using HandlesFilter = deadlock_dotnet_sdk.Domain.FileLockerEx.HandlesFilter;
@@ -314,7 +314,7 @@ namespace deadlock_dotnet_sdk
                 if (h.IsClosed && h.IsInvalid) continue;
                 try
                 {
-                    h.UnlockSystemHandle();
+                    h.CloseSourceHandle();
                 }
                 catch (Exception) when (!RethrowExceptions) { }
             }
@@ -349,7 +349,7 @@ namespace deadlock_dotnet_sdk
                     if (h.IsClosed && h.IsInvalid) continue;
                     try
                     {
-                        h.UnlockSystemHandle();
+                        h.CloseSourceHandle();
                     }
                     catch (Exception) when (!RethrowExceptions) { }
                 }
@@ -371,7 +371,7 @@ namespace deadlock_dotnet_sdk
                         if (h.IsClosed && h.IsInvalid) continue;
                         try
                         {
-                            h.UnlockSystemHandle();
+                            h.CloseSourceHandle();
                         }
                         catch (Exception) when (!RethrowExceptions) { }
                     }

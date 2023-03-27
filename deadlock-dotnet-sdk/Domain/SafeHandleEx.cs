@@ -115,7 +115,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// See Raymond Chen's devblog article <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
     /// </remarks>
     /// <exception cref="Win32Exception">Failed to open process to duplicate and close object handle.</exception>
-    public void UnlockSystemHandle()
+    public void CloseSourceHandle()
     {
         HANDLE rawHProcess;
         SafeProcessHandle? hProcess = null;
@@ -147,8 +147,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         catch (Exception e)
         {
             ExceptionLog.Add(e);
-            if (hProcess is not null)
-                hProcess.Close();
+            hProcess?.Close();
         }
     }
 
