@@ -34,6 +34,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     internal SafeHandleEx(NativeMethods.SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(false)
     {
         SysHandleEx = sysHandleEx;
+        handle = sysHandleEx.HandleValue;
 
         try
         {
