@@ -48,7 +48,7 @@ internal static partial class NativeMethods
 
         // todo: new RmStartSession overload in CsWin32_NativeMethods.cs which can throw a StartSessionException derived from System.ComponentModel.Win32Exception
         // Why? <c>new Win32Exception()</c> will get the last PInvoke error code in addition to the system's message for that Win32ErrorCode.
-        uint res = RmStartSession(out var handle, 0, key); // TODO: fix params
+        uint res = RmStartSession(out uint handle, key);
         if (res != 0)
         {
             throw new StartSessionException();
