@@ -28,15 +28,13 @@ internal static partial class NativeMethods
     /// </summary>
     private static uint? GetObjectTypeNumber(string typeName)
     {
-        Version WINDOWS_8_1 = new(6, 2);
-        Version WindowsVersion = Environment.OSVersion.Version;
         uint objectIndex = uint.MaxValue;
 
         for (int i = 0; i < ObjectTypes.Count; i++)
         {
             if (typeName.Equals(ObjectTypes[i].TypeName, StringComparison.OrdinalIgnoreCase))
             {
-                if (WindowsVersion >= WINDOWS_8_1)
+                if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
                     objectIndex = ObjectTypes[i].TypeIndex;
                 else
                     objectIndex = (uint)(i + 2);
@@ -54,13 +52,11 @@ internal static partial class NativeMethods
     /// </summary>
     private static string GetObjectTypeName(int typeIndex)
     {
-        Version WINDOWS_8_1 = new(6, 2);
-        Version WindowsVersion = Environment.OSVersion.Version;
         string objectTypeName = "";
 
         for (int i = 0; i < ObjectTypes.Count; i++)
         {
-            if (WindowsVersion >= WINDOWS_8_1)
+            if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
             {
                 if (typeIndex == ObjectTypes[i].TypeIndex)
                     objectTypeName = ObjectTypes[i].TypeName;
@@ -294,7 +290,7 @@ internal static partial class NativeMethods
 
                     if (string.Equals(typeNameSr, typeName, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (Environment.OSVersion.Platform == PlatformID.Win32NT && Environment.OSVersion.Version >= new Version(6, 3))
+                        if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
                         {
                             objectIndex = objectType->TypeIndex;
                             break;
@@ -309,7 +305,6 @@ internal static partial class NativeMethods
                     objectType = PH_NEXT_OBJECT_TYPE(objectType);
                 }
             }
-
             return objectIndex;
         }
 
@@ -323,7 +318,7 @@ internal static partial class NativeMethods
 
             for (i = 0; i < NumberOfTypes; i++)
             {
-                if (OperatingSystem.IsWindowsVersionAtLeast(6, 2))
+                if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
                 {
                     if (TypeIndex == objectType->TypeIndex)
                     {
