@@ -88,11 +88,20 @@ public class SafeFileHandleEx : SafeHandleEx
     /// <exception cref="ArgumentException(string)">Failed to query path from file handle. Invalid flags were specified for dwFlags.</exception>
     private unsafe string TryGetFinalPath()
     {
+        if (ProcessId == 4) throw new InvalidOperationException("Cannot access handle object information if handle is held by System (PID 4)");
+
         /// Return the normalized drive name. This is the default.
         uint bufLength = (uint)short.MaxValue;
         var buffer = Marshal.AllocHGlobal((int)bufLength);
         PWSTR fullName = new((char*)buffer);
-        uint length = GetFinalPathNameByHandle(this, fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+        var processHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
+        if (processHandle is null || processHandle?.IsInvalid == true)
+            throw new Win32Exception();
+
+        if (!DuplicateHandle(processHandle, new SafeFileHandle((nint)HandleValue, false), Process.GetCurrentProcess().SafeHandle, out SafeFileHandle? dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
+            throw new Win32Exception();
+
+        uint length = GetFinalPathNameByHandle(dupHandle, fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
 
         if (length != 0)
         {
@@ -102,14 +111,14 @@ public class SafeFileHandleEx : SafeHandleEx
                 buffer = Marshal.ReAllocHGlobal(buffer, (IntPtr)length);
                 fullName = new((char*)buffer);
 
-                bufLength = GetFinalPathNameByHandle(ToSafeFileHandle(), fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+                bufLength = GetFinalPathNameByHandle(dupHandle, fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
             }
             return fullName.ToString();
         }
         else
         {
             Win32ErrorCode error = (Win32ErrorCode)Marshal.GetLastWin32Error();
-            string errMsg = error.GetMessage();
+            Debug.Print(error.GetMessage());
 
             /* Hold up. Let's free our memory before throwing exceptions. */
             Marshal.FreeHGlobal(buffer);
