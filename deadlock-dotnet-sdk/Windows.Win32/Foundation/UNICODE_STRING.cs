@@ -31,7 +31,7 @@ partial struct UNICODE_STRING : IDisposable
         Buffer = Marshal.AllocHGlobal(maximumLength);
     }
 
-    public uint CharCount => (uint)ToStringLength().Length;
+    public uint CharCount => (uint)Length / 2;
 
     public void Dispose()
     {
