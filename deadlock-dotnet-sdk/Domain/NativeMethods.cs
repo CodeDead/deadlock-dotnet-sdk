@@ -64,7 +64,7 @@ internal static partial class NativeMethods
 
             // "using" blocks have hidden "finally" blocks which are executed before exceptions leave this context.
             using PWSTR pResources = (char*)Marshal.StringToHGlobalUni(path);
-            res = RmRegisterResources(handle, new Span<PWSTR>(new PWSTR[] { pResources }), rgApplications: new(), new());
+            res = RmRegisterResources(handle, new Span<PCWSTR>(new PCWSTR[] { pResources }), rgApplications: new(), new());
 
             if (res != 0)
             {
