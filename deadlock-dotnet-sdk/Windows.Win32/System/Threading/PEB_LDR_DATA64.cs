@@ -5,11 +5,10 @@ using Windows.Win32.System.WindowsProgramming;
 
 namespace Windows.Win32.System.Threading;
 
-/// <summary>
-/// https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntpsapi_x/peb_ldr_data.htm
-/// </summary>
+/// <summary>https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntpsapi_x/peb_ldr_data.htm
+/// Essentially, the head of three double-linked lists of LDR_DATA_TABLE_ENTRY structures.</summary>
 [StructLayout(LayoutKind.Explicit)]
-internal struct PEB_LDR_DATA64
+internal readonly struct PEB_LDR_DATA64
 {
     [FieldOffset(0x00)] internal readonly uint Length;
     [FieldOffset(0x04)] internal readonly BOOLEAN Initialized;

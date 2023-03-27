@@ -1,6 +1,6 @@
 namespace Windows.Win32.Foundation;
 
-internal struct HANDLE64
+internal readonly struct HANDLE64
 {
     internal readonly UIntPtr64 Value { get; init; }
 
@@ -8,7 +8,7 @@ internal struct HANDLE64
     public static implicit operator UIntPtr64(HANDLE64 v) => v.Value;
 }
 
-internal struct HANDLE64<T> where T : unmanaged
+internal readonly struct HANDLE64<T> where T : unmanaged
 {
     internal readonly UIntPtr64<T> Value { get; init; }
 

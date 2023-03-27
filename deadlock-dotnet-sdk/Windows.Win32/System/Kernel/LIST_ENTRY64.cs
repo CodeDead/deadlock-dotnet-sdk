@@ -1,7 +1,7 @@
 namespace Windows.Win32.System.Kernel;
 
 /// <inheritdoc cref="LIST_ENTRY"/>
-internal struct LIST_ENTRY64<T> where T : unmanaged
+internal readonly struct LIST_ENTRY64
 {
     /// <summary>
     /// <para>For a <b>LIST_ENTRY</b> structure that serves as a list entry, the <b>Flink</b> member points to the next entry in the list or to the list header if there is no next entry in the list. For a <b>LIST_ENTRY</b> structure that serves as the list header, the <b>Flink</b> member points to the first entry in the list or to the LIST_ENTRY structure itself if the list is empty.</para>
