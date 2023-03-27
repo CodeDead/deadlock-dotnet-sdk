@@ -66,4 +66,3 @@ internal partial struct RTL_USER_PROCESS_PARAMETERS32
     [FieldOffset(0x02B8)] public uint DefaultThreadpoolCpuSetMaskCount;
     [FieldOffset(0x02BC)] public uint DefaultThreadpoolThreadMaximum;
 }
-
