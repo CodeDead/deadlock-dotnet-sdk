@@ -22,6 +22,8 @@ namespace deadlock_dotnet_sdk.Domain;
 /// </summary>
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
+    private string? processCommandLine;
+
     public SafeHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
     { }
 
@@ -72,12 +74,11 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 
                 /** Get Process's name */
                 if (!string.IsNullOrWhiteSpace(ProcessMainModulePath))
-                {
                     ProcessName = Path.GetFileNameWithoutExtension(ProcessMainModulePath);
-                }
 
                 /** Get process's possibly-overwritten command line from the PEB struct in its memory space */
-                ProcessCommandLine = GetProcessCommandLine(hProcess);
+                //ProcessCommandLine = GetProcessCommandLine(ProcessId);
+                // moved to property's Get accessor
             }
         }
         catch (Exception e)
@@ -99,9 +100,15 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// </summary>
     /// <value></value>
     public string? HandleObjectType { get; }
-    public string? ProcessCommandLine { get; init; }
+    //public bool ProcessIs64Bit { get; } // unused, for now
+    public string? ProcessCommandLine
+    {
+        get => processCommandLine ??= GetProcessCommandLine(ProcessId); // if null, call function and assign value
+        init { processCommandLine = value; }
+    }
     public string? ProcessMainModulePath { get; }
     public string? ProcessName { get; }
+    //internal PEB_Ex? PebEx { get; } // Won't need this unless we want to start accessing otherwise unread pointer-type members of the PEB and its children (e.g. PEB_LDR_DATA, CURDIR, et cetera)
 
     /// <summary>
     /// A list of exceptions thrown by constructors and other methods of this class.<br/>
@@ -202,9 +209,18 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
             throw new Win32Exception();
         }
+    }
 
-        // PWSTR instances are freed by their using blocks' finalizers
-        return retVal;
+    private unsafe static string GetProcessCommandLine(uint processId)
+    {
+        if (processId == (uint)Environment.ProcessId)
+            return Environment.CommandLine;
+
+        Process.EnterDebugMode();
+        using SafeProcessHandle hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, processId);
+        if (hProcess.IsInvalid)
+            throw new Win32Exception();
+        else return GetProcessCommandLine(hProcess);
     }
 
     /// <summary>
@@ -216,52 +232,225 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <exception cref="Exception">NtQueryInformationProcess failed to query the process's 'PROCESS_BASIC_INFORMATION'</exception>
     private unsafe static string GetProcessCommandLine(SafeProcessHandle hProcess)
     {
-        /* Get PROCESS_BASIC_INFORMATION */
-        uint sysInfoLength = (uint)Marshal.SizeOf<PROCESS_BASIC_INFORMATION>();
-        PROCESS_BASIC_INFORMATION processBasicInfo;
-        IntPtr sysInfo = Marshal.AllocHGlobal((int)sysInfoLength);
-        NTSTATUS status = (NTSTATUS)0;
-        uint retLength = 0;
-        if ((status = NtQueryInformationProcess(
-            hProcess,
-            PROCESSINFOCLASS.ProcessBasicInformation,
-            (void*)sysInfo,
-            sysInfoLength,
-            ref retLength))
-            .IsSuccessful)
+        if (hProcess.IsInvalid)
+            throw new ArgumentException("The provided process handle is invalid.", paramName: nameof(hProcess));
+
+        if (!IsWow64Process(hProcess, out BOOL targetIs32BitProcess))
+            throw new Win32Exception();
+
+        bool weAre32BitAndTheyAre64Bit = !Environment.Is64BitProcess && !targetIs32BitProcess;
+        bool weAre64BitAndTheyAre32Bit = Environment.Is64BitProcess && targetIs32BitProcess;
+        NTSTATUS status;
+        uint returnLength = 0;
+        ulong bytesRead;
+
+        /** If Win8.1 or later */
+        if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
         {
-            processBasicInfo = Marshal.PtrToStructure<PROCESS_BASIC_INFORMATION>(sysInfo); //DevSkim: ignore DS104456 
+            const uint ProcessCommandLineInformation = 60u;
+            uint bufferLength = (uint)Marshal.SizeOf<UNICODE_STRING>() + 260u;
+            UNICODE_STRING* pString = (UNICODE_STRING*)Marshal.AllocHGlobal((int)bufferLength);
 
-            // if our process is WOW64, we need to account for different pointer sizes if
-            // the target process is 64-bit
-            IsWow64Process(hProcess, out BOOL wow64Process);
-            if (Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess && wow64Process)
+            status = NtQueryInformationProcess(
+                hProcess,
+                (PROCESSINFOCLASS)ProcessCommandLineInformation,
+                pString,
+                bufferLength,
+                ref returnLength
+                );
+
+            if (status == Code.STATUS_INFO_LENGTH_MISMATCH)
             {
-                throw new NotImplementedException("Reading a 64-bit process's PEB from a 32-bit process (under WOW64) is not yet implemented.");
-                // too much trouble. If someone else wants to do it, be my guest.
-                // https://stackoverflow.com/a/36798492/14894786
-                // Reason: if our process is 32-bit, we'd be stuck with 32-bit pointers. 
-                // If the PEB's address is in 64-bit address space, we can't access it 
-                // because the pointer value we received was truncated from 64 bits to 
-                // 32 bits.
+                bufferLength = returnLength;
+                pString->MaximumLength = (ushort)returnLength;
+                pString->Buffer = new((char*)Marshal.ReAllocHGlobal((IntPtr)pString->Buffer.Value, (IntPtr)bufferLength));
+
+                status = NtQueryInformationProcess(
+                    hProcess,
+                    (PROCESSINFOCLASS)ProcessCommandLineInformation,
+                    pString,
+                    bufferLength,
+                    ref returnLength
+                    );
             }
 
-            IntPtr buf = Marshal.AllocHGlobal(sizeof(PEB));
-            if (ReadProcessMemory(hProcess, processBasicInfo.PebBaseAddress, (void*)buf, (nuint)sizeof(PEB), null))
-            {
-                PEB peb = Marshal.PtrToStructure<PEB>(buf); //DevSkim: ignore DS104456 
-                return (*peb.ProcessParameters).CommandLine.ToStringLength();
-            }
+            if (status.IsSuccessful)
+                return pString->ToStringLength();
             else
-            {
-                // this calls Marshal.GetLastPInvokeError()
-                // https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/ComponentModel/Win32Exception.cs?L46
-                throw new Win32Exception("Failed to read the process's PEB in memory. While trying to read the PEB, the operation crossed into an area of the process that is inaccessible.");
-            }
+                throw new NTStatusException(status);
         }
-        else
+        else /** Read CommandLine from PEB's Process Parameters */
         {
-            throw new Exception("NtQueryInformationProcess failed to query the process's 'PROCESS_BASIC_INFORMATION'");
+            /** if our process is 32-bit and the target process is 64-bit, use a workaround.
+                The following blocks use a hybrid of SystemInformer's solution (PhGetProcessCommandLine) and the alternative provided at https://stackoverflow.com/a/14012919/14894786.
+                All comments inside the code blocks are from either source.
+            */
+            if (weAre32BitAndTheyAre64Bit) /** This process is 32-bit, that process is 64-bit */
+            {
+                using SafeBuffer<byte> buffer = new(true);
+                PROCESS_BASIC_INFORMATION64 basicInfo = default;
+                PEB64 peb = default;
+                RTL_USER_PROCESS_PARAMETERS64 parameters = default;
+
+                // Get the PEB address.
+                buffer.Initialize<PROCESS_BASIC_INFORMATION64>(numElements: 1);
+                status = NtWow64QueryInformationProcess64(
+                    hProcess,
+                    PROCESSINFOCLASS.ProcessBasicInformation,
+                    &basicInfo,
+                    (uint)buffer.ByteLength,
+                    &returnLength);
+                buffer.Initialize(numBytes: returnLength);
+                byte* pointer = null;
+                buffer.AcquirePointer(ref pointer);
+                status = NtWow64QueryInformationProcess64(hProcess, PROCESSINFOCLASS.ProcessBasicInformation, pointer, (uint)buffer.ByteLength, &returnLength);
+                buffer.ReleasePointer();
+                if (status.IsSuccessful)
+                {
+                    basicInfo = buffer.Read<PROCESS_BASIC_INFORMATION64>(0);
+                    buffer.Dispose();
+                }
+                else
+                {
+                    throw new Exception("NtWow64QueryInformationProcess64 failed to get the memory address of another process's PEB.", new NTStatusException(status));
+                }
+
+                // copy PEB
+                if (!(status = NtWow64ReadVirtualMemory64(hProcess, (UIntPtr64)basicInfo.PebBaseAddress, &peb, (ulong)Marshal.SizeOf(peb), &bytesRead)).IsSuccessful)
+                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's PEB to this process.", new NTStatusException(status));
+
+                // Copy RTL_USER_PROCESS_PARAMETERS.
+                if (!(status = NtWow64ReadVirtualMemory64(hProcess, (UIntPtr64)peb.ProcessParameters, &parameters, (ulong)Marshal.SizeOf(parameters), &bytesRead)).IsSuccessful)
+                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process.", new NTStatusException(status));
+
+                using UNICODE_STRING cmdLine = new()
+                {
+                    MaximumLength = parameters.CommandLine.MaximumLength,
+                    Length = parameters.CommandLine.Length,
+                    Buffer = (char*)Marshal.AllocHGlobal(parameters.CommandLine.MaximumLength)
+                };
+
+                if (!(status = NtWow64ReadVirtualMemory64(hProcess, (UIntPtr64)parameters.CommandLine.Buffer, cmdLine.Buffer.Value, cmdLine.MaximumLength, &bytesRead)).IsSuccessful)
+                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's command line character string to this process.", new NTStatusException(status));
+
+                return cmdLine.ToStringLength();
+            }
+            else if (weAre64BitAndTheyAre32Bit) /** This is 64-bit, that is 32-bit */
+            {
+                using SafeBuffer<PROCESS_BASIC_INFORMATION32> buffer = new(true);
+                PROCESS_BASIC_INFORMATION32 basicInfo = default;
+                PEB32 peb = default;
+                RTL_USER_PROCESS_PARAMETERS32 parameters = default;
+
+                // Get the PEB address.
+                buffer.Initialize<PROCESS_BASIC_INFORMATION32>(numElements: 1);
+                status = NtQueryInformationProcess(
+                    hProcess,
+                    PROCESSINFOCLASS.ProcessBasicInformation,
+                    &basicInfo,
+                    (uint)buffer.ByteLength,
+                    ref returnLength);
+                while (status == Code.STATUS_INFO_LENGTH_MISMATCH)
+                {
+                    buffer.Initialize(numBytes: returnLength);
+                    byte* pointer = null;
+                    buffer.AcquirePointer(ref pointer);
+                    status = NtQueryInformationProcess(
+                        hProcess,
+                        PROCESSINFOCLASS.ProcessBasicInformation,
+                        pointer,
+                        (uint)buffer.ByteLength,
+                        ref returnLength);
+                    buffer.ReleasePointer();
+                }
+                if (status.IsSuccessful)
+                {
+                    basicInfo = buffer.Read<PROCESS_BASIC_INFORMATION32>(0);
+                    buffer.Dispose();
+                }
+                else
+                {
+                    throw new Exception("NtQueryInformationProcess failed to get the memory address of another process's PEB.", new NTStatusException(status));
+                }
+
+                // copy PEB
+                if (!ReadProcessMemory(hProcess, (void*)basicInfo.PebBaseAddress, &peb, (nuint)Marshal.SizeOf(peb), (nuint*)&bytesRead))
+                    throw new Exception("ReadProcessMemory failed to copy another process's PEB to this process.", new NTStatusException(status));
+
+                // Copy RTL_USER_PROCESS_PARAMETERS.
+                if (!ReadProcessMemory(hProcess, (void*)peb.ProcessParameters, &parameters, (nuint)Marshal.SizeOf(parameters), (nuint*)&bytesRead))
+                    throw new Exception("ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process.", new NTStatusException(status));
+
+                using UNICODE_STRING cmdLine = new()
+                {
+                    MaximumLength = parameters.CommandLine.MaximumLength,
+                    Length = parameters.CommandLine.Length,
+                    Buffer = (char*)Marshal.AllocHGlobal(Marshal.SizeOf<char>() * 260)
+                };
+
+                if (!ReadProcessMemory(hProcess, (void*)parameters.CommandLine.Buffer, cmdLine.Buffer.Value, cmdLine.MaximumLength, (nuint*)&bytesRead))
+                    throw new Exception("ReadProcessMemory failed to copy another process's command line character string to this process.", new NTStatusException(status));
+
+                return cmdLine.ToStringLength();
+            }
+            else /** this process and that process are the same bit architecture */
+            {
+                using SafeBuffer<PROCESS_BASIC_INFORMATION> buffer = new(true);
+                PROCESS_BASIC_INFORMATION basicInfo = default;
+                PEB peb = default;
+                RTL_USER_PROCESS_PARAMETERS parameters = default;
+
+                // Get the PEB address.
+                buffer.Initialize<PROCESS_BASIC_INFORMATION>(numElements: 1);
+                status = NtQueryInformationProcess(
+                    hProcess,
+                    PROCESSINFOCLASS.ProcessBasicInformation,
+                    &basicInfo,
+                    (uint)buffer.ByteLength,
+                    ref returnLength);
+                while (status == Code.STATUS_INFO_LENGTH_MISMATCH)
+                {
+                    buffer.Initialize(numBytes: returnLength);
+                    byte* pointer = null;
+                    buffer.AcquirePointer(ref pointer);
+                    status = NtQueryInformationProcess(
+                        hProcess,
+                        PROCESSINFOCLASS.ProcessBasicInformation,
+                        pointer,
+                        (uint)buffer.ByteLength,
+                        ref returnLength);
+                    buffer.ReleasePointer();
+                }
+                if (status.IsSuccessful)
+                {
+                    basicInfo = buffer.Read<PROCESS_BASIC_INFORMATION>(0);
+                    buffer.Dispose();
+                }
+                else
+                {
+                    throw new Exception("NtQueryInformationProcess failed to get the memory address of another process's PEB.", new NTStatusException(status));
+                }
+
+                // copy PEB
+                if (!ReadProcessMemory(hProcess, basicInfo.PebBaseAddress, &peb, (nuint)Marshal.SizeOf(peb), (nuint*)&bytesRead))
+                    throw new Exception("ReadProcessMemory failed to copy another process's PEB to this process.", new NTStatusException(status));
+
+                // Copy RTL_USER_PROCESS_PARAMETERS.
+                if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &parameters, (nuint)Marshal.SizeOf(parameters), (nuint*)&bytesRead))
+                    throw new Exception("ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process.", new NTStatusException(status));
+
+                using UNICODE_STRING cmdLine = new()
+                {
+                    MaximumLength = parameters.CommandLine.MaximumLength,
+                    Length = parameters.CommandLine.Length,
+                    Buffer = (char*)Marshal.AllocHGlobal(Marshal.SizeOf<char>() * 260)
+                };
+
+                if (!ReadProcessMemory(hProcess, (void*)parameters.CommandLine.Buffer, cmdLine.Buffer.Value, cmdLine.MaximumLength, (nuint*)&bytesRead))
+                    throw new Exception("ReadProcessMemory failed to copy another process's command line character string to this process.", new NTStatusException(status));
+
+                return cmdLine.ToStringLength();
+            }
         }
     }
 
