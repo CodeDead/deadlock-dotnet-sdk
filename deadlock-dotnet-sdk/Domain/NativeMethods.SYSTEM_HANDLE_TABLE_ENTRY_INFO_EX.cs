@@ -249,10 +249,8 @@ internal static partial class NativeMethods
         public static unsafe ObjectTypesInformationBuffer PhEnumObjectTypes()
         {
             NTSTATUS status;
-            ObjectTypesInformationBuffer buffer;
+            using ObjectTypesInformationBuffer buffer = new(0x1000);
             uint returnLength;
-
-            buffer = new(0x1000);
 
             while ((status = NtQueryObject(
                 null,
