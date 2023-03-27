@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using PInvoke;
 using Code = PInvoke.NTSTATUS.Code;
 using FacilityCode = PInvoke.NTSTATUS.FacilityCode;
@@ -6,6 +7,7 @@ using FacilityCode = PInvoke.NTSTATUS.FacilityCode;
 /// </summary>
 namespace Windows.Win32.Foundation;
 
+[DebuggerDisplay("{Code}")]
 readonly partial struct NTSTATUS
 {
     public bool IsSuccessful => SeverityCode is Severity.Success;
@@ -18,8 +20,10 @@ readonly partial struct NTSTATUS
             throw new NTStatusException(this);
     }
 
+    public global::PInvoke.NTSTATUS.Code Code => ((global::PInvoke.NTSTATUS)this).Value;
+
     /// <inheritdoc cref="Kernel32Extensions.GetMessage(global::PInvoke.NTSTATUS)"/>
-    public string GetMessage() => ((global::PInvoke.NTSTATUS)this).GetMessage();
+    public string Message => ((global::PInvoke.NTSTATUS)this).GetMessage();
 
     public Code Code => (Code)Value;
     public FacilityCode FacilityCode => ((global::PInvoke.NTSTATUS)this).Facility;
