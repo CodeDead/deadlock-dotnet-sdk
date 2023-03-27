@@ -203,7 +203,7 @@ internal static partial class NativeMethods
         }
     }
 
-    private sealed class ObjectTypesInformationBuffer : IDisposable
+    internal sealed class ObjectTypesInformationBuffer : IDisposable
     {
         private IntPtr pointer;
         private uint bytes;
