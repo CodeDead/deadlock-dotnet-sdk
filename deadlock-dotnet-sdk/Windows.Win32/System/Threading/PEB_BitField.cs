@@ -29,5 +29,4 @@ public enum PEB_BitField
     IsProtectedProcessLight = 128,
     /// <summary>Compatibility: 1607 and higher</summary>
     IsLongPathAwareProcess = 256,
-
 }
