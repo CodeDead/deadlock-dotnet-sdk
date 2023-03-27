@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using deadlock_dotnet_sdk.Domain;
 using HandlesFilter = deadlock_dotnet_sdk.Domain.FileLockerEx.HandlesFilter;
@@ -42,9 +42,8 @@ namespace deadlock_dotnet_sdk
         /// <returns>The FileLocker object that contains a List of Process objects that are locking a file</returns>
         public FileLocker FindLockingProcesses(string filePath)
         {
-            FileLocker fileLocker = new(filePath,
+            return new(filePath,
                 NativeMethods.FindLockingProcesses(filePath, RethrowExceptions).ToList());
-            return fileLocker;
         }
 
         /// <summary>
