@@ -1,24 +1,25 @@
 namespace Windows.Win32.System.WindowsProgramming;
-struct OBJECT_TYPES_INFORMATION : IEquatable<OBJECT_TYPES_INFORMATION>
+struct OBJECT_TYPES_INFORMATION
 {
-    public uint NumberOfTypes = 0;
-
     public OBJECT_TYPES_INFORMATION(uint numberOfTypes)
     {
         NumberOfTypes = numberOfTypes;
     }
 
-    public static explicit operator uint(OBJECT_TYPES_INFORMATION v) => v.NumberOfTypes;
+    public uint NumberOfTypes;
 
-    public static bool operator ==(OBJECT_TYPES_INFORMATION x, OBJECT_TYPES_INFORMATION y) => x.NumberOfTypes == y.NumberOfTypes;
+    public unsafe OBJECT_TYPE_INFORMATION TypeInformation_0 = default;
+    public unsafe OBJECT_TYPE_INFORMATION TypeInformation_1 = default;
 
-    public static bool operator !=(OBJECT_TYPES_INFORMATION x, OBJECT_TYPES_INFORMATION y) => x.NumberOfTypes != y.NumberOfTypes;
-
-    public override bool Equals(object? obj)
+    public unsafe OBJECT_TYPE_INFORMATION[] TypeInformation
     {
-        return obj is OBJECT_TYPES_INFORMATION information &&
-               NumberOfTypes == information.NumberOfTypes;
+        get
+        {
+            fixed (OBJECT_TYPE_INFORMATION* p = &TypeInformation_0)
+                return new ReadOnlySpan<OBJECT_TYPE_INFORMATION>(p, (int)NumberOfTypes).ToArray();
+        }
     }
 
-    public bool Equals(OBJECT_TYPES_INFORMATION other) => NumberOfTypes == other.NumberOfTypes;
+    public static explicit operator uint(OBJECT_TYPES_INFORMATION v) => v.NumberOfTypes;
+
 }
