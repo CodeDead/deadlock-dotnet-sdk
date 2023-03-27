@@ -52,25 +52,34 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             // PROCESS_QUERY_LIMITED_INFORMATION + PROCESS_VM_READ for reading PEB from the process's memory space.
             // if we need to duplicate a handle later, we'll use PROCESS_DUP_HANDLE
 
-            if (ProcessId == 4)
+            if (ProcessId == 0)
+            {
+                ProcessName = "System Idle Process";
+            }
+            else if (ProcessId == 4)
             {
                 ProcessName = "System";
             }
             else
             {
-                HANDLE rawHandle = OpenProcess(
-                    dwDesiredAccess: PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ,
-                    bInheritHandle: (BOOL)false,
-                    dwProcessId: ProcessId
-                );
-
-                if (rawHandle.IsNull)
-                    throw new Win32Exception("Failed to open process handle with access rights 'PROCESS_QUERY_LIMITED_INFORMATION' and 'PROCESS_VM_READ'. The following information will be unavailable: main module full name, process name, process' startup command line");
-
-                using SafeProcessHandle hProcess = new(rawHandle, true);
+                try
+                {
+                    ProcessName = Process.GetProcessById((int)ProcessId).ProcessName;
+                }
+                catch (Exception e)
+                {
+                    ExceptionLog.Add(e);
+                }
 
                 /** Get main module's full path */
-                ProcessMainModulePath = GetFullProcessImageName(hProcess);
+                try
+                {
+                    ProcessMainModulePath = GetFullProcessImageName(ProcessId);
+                }
+                catch (Exception e)
+                {
+                    ExceptionLog.Add(e);
+                }
 
                 /** Get Process's name */
                 if (!string.IsNullOrWhiteSpace(ProcessMainModulePath))
@@ -165,27 +174,23 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// A wrapper for QueryFullProcessImageName, a system function that circumvents 32-bit process limitations when permitted the PROCESS_QUERY_LIMITED_INFORMATION right.
     /// </summary>
-    /// <param name="hProcess">A SafeProcessHandle opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
+    /// <param name="processId">The ID of the process to open. The resulting SafeProcessHandle is opened with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/></param>
     /// <returns>The path to the executable image.</returns>
     /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
     /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
-    private unsafe static string GetFullProcessImageName(SafeProcessHandle hProcess)
+    private unsafe static string? GetFullProcessImageName(uint processId)
     {
-        if (hProcess.IsInvalid)
-            throw new ArgumentException("The process handle is invalid", nameof(hProcess));
-
         uint size = 260 + 1;
         uint bufferLength = size;
-        string retVal = "";
+
+        using SafeProcessHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+        if (hProcess.IsInvalid)
+            throw new UnauthorizedAccessException("Cannot query process's filename.", new Win32Exception());
 
         using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufferLength));
-        if (QueryFullProcessImageName(
-            hProcess: hProcess,
-            dwFlags: PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-            lpExeName: buffer,
-            lpdwSize: ref size))
+        if (QueryFullProcessImageName(hProcess, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, lpExeName: buffer, ref size))
         {
-            retVal = buffer.ToString();
+            return buffer.ToString();
         }
         else if (bufferLength < size)
         {
@@ -196,7 +201,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 newBuffer,
                 ref size))
             {
-                retVal = newBuffer.ToString();
+                return newBuffer.ToString();
             }
             else
             {
