@@ -120,14 +120,6 @@ partial struct PEB
     public unsafe IntPtr KernelCallbackTable => (IntPtr)Reserved7;
     public unsafe IntPtr UserSharedInfoPtr => (IntPtr)Reserved7;
     public uint SystemReserved => Reserved8;
-    public unsafe uint AtlThunkSListPtr32
-    {
-        get
-        {
-            fixed (void** uint0 = &Reserved9._0)
-                return *(uint*)uint0;
-        }
-    }
     public unsafe API_SET_NAMESPACE* ApiSetMap
     {
         get
