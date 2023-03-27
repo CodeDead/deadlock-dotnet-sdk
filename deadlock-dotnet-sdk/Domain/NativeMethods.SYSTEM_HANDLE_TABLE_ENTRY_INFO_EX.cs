@@ -130,7 +130,7 @@ internal static partial class NativeMethods
             Consider copying 'this' to a local variable outside the anonymous method, lambda
             expression, query expression, or local function and using the local instead.
             */
-            return GetObjectTypeName(ObjectTypeIndex);
+            return PhGetObjectTypeName(ObjectTypeIndex);
 
             //* Open a handle to the process associated with this system handle - adamkramer */
 
