@@ -26,7 +26,7 @@ internal static partial class NativeMethods
     /// <summary>
     /// ported from SystemInformer for convenience
     /// </summary>
-    private static uint? GetObjectTypeNumber(string typeName)
+    private static uint? PhGetObjectTypeNumber(string typeName)
     {
         uint objectIndex = uint.MaxValue;
 
@@ -50,7 +50,7 @@ internal static partial class NativeMethods
     /// <summary>
     /// ported from SystemInformer for convenience
     /// </summary>
-    private static string GetObjectTypeName(int typeIndex)
+    private static string PhGetObjectTypeName(int typeIndex)
     {
         string objectTypeName = "";
 
