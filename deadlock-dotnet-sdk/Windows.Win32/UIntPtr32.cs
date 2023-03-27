@@ -24,5 +24,4 @@ internal struct UIntPtr32<T> where T : unmanaged
 
     public static explicit operator UIntPtr32(UIntPtr32<T> v) => v.Value;
     public unsafe static explicit operator T*(UIntPtr32<T> v) => (T*)v.Value;
-
 }
