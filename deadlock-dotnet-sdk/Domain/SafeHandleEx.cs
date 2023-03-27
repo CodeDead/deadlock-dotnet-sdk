@@ -268,7 +268,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// Release all resources owned by the current process that are associated with this handle.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>Returns a bool indicating both <see cref="IsClosed"/> and <see cref="IsInvalid"/> are true</returns>
     protected override bool ReleaseHandle()
     {
         Close();

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace deadlock_dotnet_sdk.Domain
 {
@@ -74,7 +74,6 @@ namespace deadlock_dotnet_sdk.Domain
         /// <summary>
         /// Filters for <see cref="NativeMethods.FindLockingHandles(string?, HandlesFilter)"/>
         /// </summary>
-        /// TODO: rename to HandlesFilter
         [Flags]
         public enum HandlesFilter
         {
