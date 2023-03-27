@@ -41,21 +41,21 @@ internal static partial class NativeMethods
     /// <param name="path">Path to the file</param>
     /// <param name="rethrowExceptions">True if inner exceptions should be rethrown, otherwise false</param>
     /// <returns>A collection of processes that are locking a file</returns>
+    /// <exception cref="StartSessionException">Failed to start Restart Manager session. See InnerException for details.</exception>
+    /// <exception cref="RegisterResourceException">Failed to register resources to the Restart Manager session. See InnerException for details.</exception>
+    /// <exception cref="RmListException">Failed to get list of applications and services that are currently using the resources registered with the Restart Manager session. See InnerException for details.</exception>
+    /// <exception cref="UnauthorizedAccessException">Failed to get list of applications and services that are currently using the resources registered with the Restart Manager session. See InnerException for details.</exception>
     internal static unsafe IEnumerable<Process> FindLockingProcesses(string path, bool rethrowExceptions)
     {
         using PWSTR key = new((char*)Marshal.StringToHGlobalUni(Guid.NewGuid().ToString()));
         List<Process> processes = new();
 
-        // Why? <c>new Win32Exception()</c> will get the last PInvoke error code in addition to the system's message for that Win32ErrorCode.
-        uint res = RmStartSession(out uint handle, key);
+        Win32ErrorCode res = (Win32ErrorCode)RmStartSession(out uint handle, key);
         if (res != 0)
-        {
-            throw new StartSessionException();
-        }
+            throw new StartSessionException("Failed to start Restart Manager session.", new PInvoke.Win32Exception(res));
 
         try
         {
-            const int errorMoreData = 234;
             uint pnProcInfo = 0;
             uint lpdwRebootReasons = RmRebootReasonNone;
 
@@ -63,25 +63,21 @@ internal static partial class NativeMethods
 
             // "using" blocks have hidden "finally" blocks which are executed before exceptions leave this context.
             using PWSTR pResources = (char*)Marshal.StringToHGlobalUni(path);
-            res = RmRegisterResources(handle, new Span<PCWSTR>(new PCWSTR[] { pResources }), rgApplications: new(), new());
 
-            if (res != 0)
+            if ((res = (Win32ErrorCode)RmRegisterResources(handle, new Span<PCWSTR>(new PCWSTR[] { pResources }), rgApplications: new(), new()))
+                is not Win32ErrorCode.ERROR_SUCCESS)
             {
-                throw new RegisterResourceException();
+                throw new RegisterResourceException("Failed to register resources to the Restart Manager session.", new PInvoke.Win32Exception(res));
             }
 
-            res = RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, out lpdwRebootReasons);
-
-            if (res == errorMoreData) // Win32ErrorCode.ERROR_MORE_DATA
+            if ((res = (Win32ErrorCode)RmGetList(handle, out var pnProcInfoNeeded, ref pnProcInfo, null, out lpdwRebootReasons))
+                is Win32ErrorCode.ERROR_MORE_DATA)
             {
                 ReadOnlySpan<RM_PROCESS_INFO> processInfo = new RM_PROCESS_INFO[pnProcInfoNeeded];
                 pnProcInfo = pnProcInfoNeeded;
 
                 fixed (RM_PROCESS_INFO* pProcessInfo = processInfo)
-                {
-                    res = RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, pProcessInfo, out lpdwRebootReasons);
-                }
-                if (res == 0)
+                    res = (Win32ErrorCode)RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, pProcessInfo, out lpdwRebootReasons); if (res is Win32ErrorCode.ERROR_SUCCESS)
                 {
                     processes = new List<Process>((int)pnProcInfo);
 
@@ -91,20 +87,18 @@ internal static partial class NativeMethods
                         {
                             processes.Add(Process.GetProcessById((int)processInfo[i].Process.dwProcessId));
                         }
-                        catch (ArgumentException)
-                        {
-                            if (rethrowExceptions) throw;
-                        }
+                        catch (ArgumentException) when (!rethrowExceptions)
+                        { }
                     }
                 }
                 else
                 {
-                    throw new RmListException();
+                    throw new RmListException("Failed to get list of applications and services that are currently using the resources registered with the Restart Manager session.", new PInvoke.Win32Exception(res));
                 }
             }
-            else if (res != 0)
+            else if (res is not Win32ErrorCode.ERROR_SUCCESS)
             {
-                throw new UnauthorizedAccessException();
+                throw new UnauthorizedAccessException("Failed to get list of applications and services that are currently using the resources registered with the Restart Manager session.", new PInvoke.Win32Exception(res));
             }
         }
         finally
