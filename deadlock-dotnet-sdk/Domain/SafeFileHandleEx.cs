@@ -36,27 +36,41 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         try
         {
-            if ((bool)(IsFileHandle = SysHandleEx.IsFileHandle()))
+            IsFileHandle = SysHandleEx.IsFileHandle();
+        }
+        catch (Exception e)
+        {
+            ExceptionLog.Add(e);
+        }
+
+        if (IsFileHandle == true)
+        {
+            try
             {
-                try
+                if (ProcessId == 4)
                 {
-                    FileFullPath = TryGetFinalPath();
-                    FileName = Path.GetFileName(FileFullPath);
-                    IsDirectory = (File.GetAttributes(FileFullPath) & FileAttributes.Directory) == FileAttributes.Directory;
+                    ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
+                    return;
                 }
-                catch (Exception e)
+
+                if (ProcessName == "smss")
                 {
-                    ExceptionLog.Add(e);
+                    ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
+                    return;
                 }
+
+                FileFullPath = TryGetFinalPath();
+                FileName = Path.GetFileName(FileFullPath);
+                IsDirectory = (File.GetAttributes(FileFullPath) & FileAttributes.Directory) == FileAttributes.Directory;
             }
-            else
+            catch (Exception e)
             {
-                ExceptionLog.Add(new InvalidCastException("Cannot cast non-file handle to file handle!"));
+                ExceptionLog.Add(e);
             }
         }
-        catch (Exception ex)
+        else
         {
-            ExceptionLog.Add(ex);
+            ExceptionLog.Add(new InvalidCastException("Cannot cast non-file handle to file handle!"));
         }
     }
 
