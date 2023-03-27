@@ -1,7 +1,11 @@
 using System.Data;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+using PInvoke;
 using Windows.Win32.Foundation;
 using Windows.Win32.Storage.FileSystem;
+using Windows.Win32.System.Threading;
 using static deadlock_dotnet_sdk.Domain.NativeMethods;
 using static Windows.Win32.PInvoke;
 
@@ -90,19 +94,17 @@ public class SafeFileHandleEx : SafeHandleEx
         }
         else
         {
-            int error = Marshal.GetLastWin32Error();
-            const int ERROR_PATH_NOT_FOUND = 3;
-            const int ERROR_NOT_ENOUGH_MEMORY = 8;
-            const int ERROR_INVALID_PARAMETER = 87; // 0x57
+            Win32ErrorCode error = (Win32ErrorCode)Marshal.GetLastWin32Error();
+            string errMsg = error.GetMessage();
 
             /* Hold up. Let's free our memory before throwing exceptions. */
             Marshal.FreeHGlobal(buffer);
 
             throw error switch
             {
-                ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{fullName}' was not found when querying a file handle.", fileName: fullName.ToString()), // Removable storage, deleted item, network shares, et cetera
-                ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException("Failed to query path from file handle. Insufficient memory to complete the operation."), // unlikely, but possible if system has little free memory
-                ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags."), // possible only if FILE_NAME_NORMALIZED (0) is invalid
+                Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{fullName}' was not found when querying a file handle.", fileName: fullName.ToString()), // Removable storage, deleted item, network shares, et cetera
+                Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException("Failed to query path from file handle. Insufficient memory to complete the operation."), // unlikely, but possible if system has little free memory
+                Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags."), // possible only if FILE_NAME_NORMALIZED (0) is invalid
                 _ => new Exception($"An undocumented error ({error}) was returned when querying a file handle for its path."),
             };
         }

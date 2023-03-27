@@ -7,7 +7,8 @@ using Windows.Win32.System.RestartManager;
 using Windows.Win32.System.WindowsProgramming;
 using static deadlock_dotnet_sdk.Domain.FileLockerEx;
 using static Windows.Win32.PInvoke;
-using NTSTATUS = PInvoke.NTSTATUS;
+using Code = PInvoke.NTSTATUS.Code;
+using NTSTATUS = Windows.Win32.Foundation.NTSTATUS;
 using Win32Exception = System.ComponentModel.Win32Exception;
 
 // Re: StructLayout
@@ -182,7 +183,6 @@ internal static partial class NativeMethods
     /// <exception cref="Win32Exception"></exception>
     internal unsafe static ReadOnlySpan<SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX> GetSystemHandleInfoEx()
     {
-        const uint STATUS_INFO_LENGTH_MISMATCH = 0xC0000004;
         const uint PH_LARGE_BUFFER_SIZE = 256 * 1024 * 1024; // 256 Mebibytes
         uint systemInformationLength = (uint)Marshal.SizeOf<SYSTEM_HANDLE_INFORMATION_EX>();
         SYSTEM_HANDLE_INFORMATION_EX* pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.AllocHGlobal(Marshal.SizeOf<SYSTEM_HANDLE_INFORMATION_EX>());
@@ -195,7 +195,7 @@ internal static partial class NativeMethods
             ReturnLength: ref returnLength
             );
 
-        for (uint attempts = 0; status.Value == NTSTATUS.Code.STATUS_INFO_LENGTH_MISMATCH && attempts < 10; attempts++)
+        for (uint attempts = 0; status.Code is Code.STATUS_INFO_LENGTH_MISMATCH && attempts < 10; attempts++)
         {
             /** The value of returnLength depends on how many handles are open.
              Handles may be opened or closed before, during, and after this operation, so the return length is rarely correct.
@@ -211,7 +211,7 @@ internal static partial class NativeMethods
                 );
         }
 
-        if (status != NTSTATUS.Code.STATUS_SUCCESS)
+        if (status != Code.STATUS_SUCCESS)
         {
             // Fall back to using the previous code that we've used since Windows XP (dmex)
             systemInformationLength = 0x10000;
@@ -223,20 +223,20 @@ internal static partial class NativeMethods
                 SystemInformation: pSysInfoBuffer,
                 SystemInformationLength: systemInformationLength,
                 ReturnLength: ref returnLength
-                )) == STATUS_INFO_LENGTH_MISMATCH)
+                )) == Code.STATUS_INFO_LENGTH_MISMATCH)
             {
                 Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
                 systemInformationLength *= 2;
 
                 // Fail if we're resizing the buffer to something very large.
                 if (systemInformationLength > PH_LARGE_BUFFER_SIZE)
-                    throw new NTStatusException(NTSTATUS.Code.STATUS_BUFFER_OVERFLOW);
+                    throw new NTStatusException(Code.STATUS_BUFFER_OVERFLOW);
 
                 pSysInfoBuffer = (SYSTEM_HANDLE_INFORMATION_EX*)Marshal.ReAllocHGlobal(pv: (IntPtr)pSysInfoBuffer, cb: (IntPtr)systemInformationLength);
             }
         }
 
-        if (status != NTSTATUS.Code.STATUS_SUCCESS)
+        if (status != Code.STATUS_SUCCESS)
         {
             Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
             throw new NTStatusException(status);

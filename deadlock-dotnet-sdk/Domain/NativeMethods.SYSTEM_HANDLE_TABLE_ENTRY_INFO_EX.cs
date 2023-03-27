@@ -1,11 +1,10 @@
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
-using PInvoke;
-using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.WindowsProgramming;
+using static PInvoke.Kernel32;
 using static Windows.Win32.PInvoke;
-using NTSTATUS = PInvoke.NTSTATUS;
+using Code = PInvoke.NTSTATUS.Code;
 
 // Re: StructLayout
 // "C#, Visual Basic, and C++ compilers apply the Sequential layout value to structures by default."
@@ -20,8 +19,6 @@ namespace deadlock_dotnet_sdk.Domain;
 
 internal static partial class NativeMethods
 {
-    private static bool IsSuccessful(this NTSTATUS status) => status.Severity == NTSTATUS.SeverityCode.STATUS_SEVERITY_SUCCESS;
-    private static bool NT_SUCCESS(this NTSTATUS status) => status.Severity == NTSTATUS.SeverityCode.STATUS_SEVERITY_SUCCESS;
     private const uint PH_LARGE_BUFFER_SIZE = int.MaxValue;
     private static List<ObjectTypeInformation>? objectTypes;
     private static List<ObjectTypeInformation> ObjectTypes => objectTypes ??= ObjectTypesInformationBuffer.PhEnumObjectTypes().ToList();
@@ -114,12 +111,12 @@ internal static partial class NativeMethods
         /// This is a bitwise "Flags" data type.
         /// See the "Granted Access" column in the Handles section of a process properties window in ProcessHacker.
         /// </summary>
-        public Kernel32.ACCESS_MASK GrantedAccess { get; } // uint
+        public ACCESS_MASK GrantedAccess { get; } // uint
         public ushort CreatorBackTraceIndex { get; } // USHORT
         /// <summary>ProcessHacker defines a little over a dozen handle-able object types.</summary>
         public ushort ObjectTypeIndex { get; } // USHORT
         /// <summary><see href="https://docs.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_object_attributes#members"/></summary>
-        public Kernel32.HandleFlags HandleAttributes { get; } // uint
+        public HandleFlags HandleAttributes { get; } // uint
 #pragma warning disable RCS1213, CS0169, IDE0051 // Remove unused field declaration. csharp(RCS1213) | Roslynator
         private readonly uint Reserved;
 #pragma warning restore RCS1213, CS0649, CS0169, IDE0051
@@ -252,6 +249,7 @@ internal static partial class NativeMethods
         /// </summary>
         /// <returns>An <see cref="ObjectTypesInformationBuffer"/>, a wrapper for OBJECT_TYPES_INFORMATION, OBJECT_TYPE_INFORMATION, and the allocated memory they occupy.</returns>
         /// <exception cref="NTStatusException"></exception>
+        /// <exception cref="PInvoke.NTStatusException"></exception>
         public static unsafe ObjectTypesInformationBuffer PhEnumObjectTypes()
         {
             NTSTATUS status;
@@ -266,20 +264,16 @@ internal static partial class NativeMethods
                 (void*)buffer.pointer,
                 buffer.bytes,
                 &returnLength
-                )) == NTSTATUS.Code.STATUS_INFO_LENGTH_MISMATCH)
+                )) == Code.STATUS_INFO_LENGTH_MISMATCH)
             {
                 // Fail if we're resizing the buffer to something very large.
                 if (returnLength * 1.5 > PH_LARGE_BUFFER_SIZE)
-                    throw new NTStatusException(NTSTATUS.Code.STATUS_INSUFFICIENT_RESOURCES);
+                    throw new PInvoke.NTStatusException(Code.STATUS_INSUFFICIENT_RESOURCES);
 
                 buffer.ReAllocate((uint)(returnLength * 1.5));
             }
 
-            if (!status.NT_SUCCESS())
-            {
-                buffer.Dispose();
-                throw new NTStatusException(status);
-            }
+            status.ThrowOnError();
 
             return buffer;
         }

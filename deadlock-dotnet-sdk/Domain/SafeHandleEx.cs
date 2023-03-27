@@ -1,11 +1,15 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
+using PInvoke;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Threading;
 using static Windows.Win32.PInvoke;
 using ACCESS_MASK = PInvoke.Kernel32.ACCESS_MASK;
+using Code = PInvoke.NTSTATUS.Code;
+using NTSTATUS = Windows.Win32.Foundation.NTSTATUS;
+using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace deadlock_dotnet_sdk.Domain;
 
