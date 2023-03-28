@@ -132,18 +132,6 @@ internal static partial class NativeMethods
                 throw new Exception("Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. See InnerException for details.", e);
             }
         }
-
-        /// <summary>
-        /// Try to cast this handle's <see cref="HandleValue"/> to a SafeFileHandle;
-        /// </summary>
-        /// <returns>A <see cref="SafeFileHandle"/> if this handle's object is a data/directory File.</returns>
-        /// <exception cref="Exception">The handle's object is not a File -OR- perhaps NtQueryObject() failed. See <see cref="Exception.InnerException"/> for details.</exception>
-        public SafeFileHandle ToSafeFileHandle()
-        {
-            return IsFileHandle()
-                ? (new((nint)HandleValue, (int)UniqueProcessId == Environment.ProcessId))
-                : throw new Exception("The handle's object is not a File -OR- NtQueryObject() failed. See InnerException for details.");
-        }
     }
 
     internal sealed class ObjectTypesInformationBuffer : IDisposable
