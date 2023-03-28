@@ -48,7 +48,7 @@ internal static partial class NativeMethods
         public SafeObjectHandle GetSafeHandle() => new(HandleValue, false);
         /// <summary>This is a bitwise "Flags" data type.
         /// See the "Granted Access" column in the Handles section of a process properties window in ProcessHacker.</summary>
-        [System.Text.Json.Serialization.JsonIgnore]
+        [JsonIgnore]
         public ACCESS_MASK GrantedAccess { get; } // uint
         /// <summary>Note: SpecificRights requires the Type of `Object` and the code definitions of that Type's access rights.</summary>
         public string GrantedAccessString => $"0x{GrantedAccess.Value:X} ({GrantedAccess.SpecificRights}, {GrantedAccess.StandardRights}, {GrantedAccess.GenericRights})";
