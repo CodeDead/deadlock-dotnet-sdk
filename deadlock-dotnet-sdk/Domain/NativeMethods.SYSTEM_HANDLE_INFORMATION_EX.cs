@@ -16,7 +16,7 @@ internal static partial class NativeMethods
     /// The <see href="https://www.geoffchappell.com/studies/windows/km/ntoskrnl/api/ex/sysinfo/handle_ex.htm"><c>SYSTEM_HANDLE_INFORMATION_EX</c></see>
     /// struct is 0x24 or 0x38 bytes in 32-bit and 64-bit Windows, respectively. However, Handles is a variable-length array.
     /// </summary>
-    public unsafe struct SYSTEM_HANDLE_INFORMATION_EX
+    public readonly unsafe struct SYSTEM_HANDLE_INFORMATION_EX
     {
 #pragma warning disable CS0649
 
