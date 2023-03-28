@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using Microsoft.Win32.SafeHandles;
 using PInvoke;
@@ -83,8 +82,6 @@ internal static partial class NativeMethods
                     throw new NTStatusException(status);
 
                 return (string)buffer.Read<PUBLIC_OBJECT_TYPE_INFORMATION>(0).TypeName;
-
-                // return GetObjectTypeName(ObjectTypeIndex);
             }
             catch (Exception)
             {
@@ -111,23 +108,6 @@ internal static partial class NativeMethods
             using SafeObjectHandle safeHandleValue = new(HandleValue, false);
             DuplicateHandle(sourceProcess, safeHandleValue, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, default, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
             return GetHandleInformation(dupHandle);
-        }
-
-        /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
-        /// <returns>True if the handle is for a file or directory.</returns>
-        /// <remarks>Based on source of C/C++ projects <see href="https://www.x86matthew.com/view_post?id=hijack_file_handle">Hijack File Handle</see> and <see href="https://github.com/adamkramer/handle_monitor">Handle Monitor</see></remarks>
-        /// <exception cref="Exception">Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. See InnerException for details.</exception>
-        public bool IsFileHandle()
-        {
-            try
-            {
-                string type = GetHandleObjectType();
-                return !string.IsNullOrWhiteSpace(type) && string.CompareOrdinal(type, "File") == 0;
-            }
-            catch (Exception e)
-            {
-                throw new Exception("Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. See InnerException for details.", e);
-            }
         }
     }
 }

@@ -136,41 +136,48 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// See Raymond Chen's devblog article <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
     /// </remarks>
     /// <exception cref="Win32Exception">Failed to open process to duplicate and close object handle.</exception>
-    public void CloseSourceHandle()
+    public bool CloseSourceHandle()
     {
-        HANDLE rawHProcess;
-        SafeProcessHandle? hProcess = null;
         try
         {
-            if ((rawHProcess = OpenProcess(
-                PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE,
-                true,
-                ProcessId)
-                ).IsNull)
-            {
-                throw new Win32Exception($"Failed to open process with id {ProcessId} to duplicate and close object handle.");
-            }
-
-            hProcess = new(rawHProcess, true);
-            if (DuplicateHandle(hProcess, this, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_CLOSE_SOURCE))
-            {
-                dupHandle.Close();
-                hProcess.Close();
-
-                // finally, close this SafeHandleEx
-                Close();
-            }
-            else
-            {
+            HANDLE rawHProcess;
+            using SafeProcessHandle hProcess = new(
+                !(rawHProcess = OpenProcess(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, true, ProcessId)).IsNull
+                    ? rawHProcess
+                    : throw new Win32Exception($"Failed to open process with id {ProcessId} to duplicate and close object handle."),
+                true);
+            if (!DuplicateHandle(hProcess, this, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_CLOSE_SOURCE))
                 throw new Win32Exception("Function DuplicateHandle failed to duplicate the handle");
-            }
+
+            dupHandle.Close();
+            hProcess.Close();
+            // finally, close this SafeHandleEx
+            Close();
+            return true;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            ExceptionLog.Add(e);
-            hProcess?.Close();
+            ExceptionLog.Add(ex);
+            return false;
         }
     }
+
+    /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
+    /// <returns>True if the handle is for a file or directory.</returns>
+    /// <remarks>Based on source of C/C++ projects <see href="https://www.x86matthew.com/view_post?id=hijack_file_handle">Hijack File Handle</see> and <see href="https://github.com/adamkramer/handle_monitor">Handle Monitor</see></remarks>
+    /// <exception cref="Exception">Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. InnerException Message: </exception>
+    public (bool? v, Exception? ex) GetIsFileHandle()
+    {
+        try
+        {
+            return (HandleObjectType != default && HandleObjectType.v == "File", null);
+        }
+        catch (Exception ex)
+        {
+            return (null, new Exception($"Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. InnerException Message: {ex.Message}", ex));
+        }
+    }
+
 
     /// <summary>
     /// A wrapper for QueryFullProcessImageName, a system function that circumvents 32-bit process limitations when permitted the PROCESS_QUERY_LIMITED_INFORMATION right.
