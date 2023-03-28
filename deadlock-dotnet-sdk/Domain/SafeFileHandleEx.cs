@@ -3,10 +3,10 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using PInvoke;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Storage.FileSystem;
 using Windows.Win32.System.Threading;
-using static deadlock_dotnet_sdk.Domain.NativeMethods;
 using static Windows.Win32.PInvoke;
 
 // Re: StructLayout
@@ -24,44 +24,46 @@ namespace deadlock_dotnet_sdk.Domain;
 /// </summary>
 public class SafeFileHandleEx : SafeHandleEx
 {
+    private (bool? v, Exception? ex) isFileHandle;
+    private (TypeOfFileHandle? v, Exception? ex) fileHandleType;
+    private (string? v, Exception? ex) fileFullPath;
+    private (string? v, Exception? ex) fileName;
+    private (bool? v, Exception? ex) isDirectory;
+
     // TODO: there's gotta be a better way to cast a base class to an implementing class
     internal SafeFileHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
     { }
 
-    /// <summary>
-    /// Initialize
-    /// </summary>
+    /// <summary>Initialize</summary>
     /// <param name="sysHandleEx"></param>
     internal SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(sysHandleEx: sysHandleEx)
     {
-        try
-        {
-            IsFileHandle = SysHandleEx.IsFileHandle();
-        }
-        catch (Exception e)
-        {
-            ExceptionLog.Add(e);
-        }
-
-        if (IsFileHandle == true)
+        if (IsFileHandle != default && IsFileHandle.v == true)
         {
             try
             {
-                if (ProcessId == 4)
+                if (ProcessIsProtected.v == true)
                 {
-                    ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
-                    return;
+                    if (ProcessIsProtected != default)
+                    {
+                        ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
+                    }
+                    if (ProcessName.v is "smss")
+                    {
+                        ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
+                        return;
+                    }
                 }
 
-                if (ProcessName == "smss")
+#if DEBUG
+                _ = FileHandleType;
+                if (FileHandleType.v == TypeOfFileHandle.Disk)
                 {
-                    ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
-                    return;
+                    _ = FileFullPath;
+                    _ = FileName;
+                    _ = IsDirectory;
                 }
-
-                FileFullPath = TryGetFinalPath();
-                FileName = Path.GetFileName(FileFullPath);
-                IsDirectory = (File.GetAttributes(FileFullPath) & FileAttributes.Directory) == FileAttributes.Directory;
+#endif
             }
             catch (Exception e)
             {
@@ -74,10 +76,72 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    public string? FileFullPath { get; }
-    public string? FileName { get; }
-    public bool? IsDirectory { get; }
-    public bool? IsFileHandle { get; }
+    public (bool? v, Exception? ex) IsFileHandle => isFileHandle == default ? (isFileHandle = GetIsFileHandle()) : isFileHandle;
+    public (TypeOfFileHandle? v, Exception? ex) FileHandleType
+    {
+        get
+        {
+            if (fileHandleType == default)
+            {
+                try
+                {
+                    return fileHandleType = ((TypeOfFileHandle?)GetFileType(handle), null);
+                }
+                catch (Exception ex)
+                {
+                    return (null, ex);
+                }
+            }
+            else
+            {
+                return fileHandleType;
+            }
+        }
+    }
+
+    public (string? v, Exception? ex) FileFullPath => fileFullPath == default ? (fileFullPath = TryGetFinalPath()) : fileFullPath;
+
+    public (string? v, Exception? ex) FileName => fileName == default
+                ? FileFullPath != default && FileFullPath.v is not null
+                    ? (fileName = (Path.GetFileName(FileFullPath.v), null))
+                    : (fileName = (null, new InvalidOperationException("Unable to query FileName; This operation requires FileFullPath.")))
+                : fileName;
+
+    public (bool? v, Exception? ex) IsDirectory
+    {
+        get
+        {
+            if (isDirectory == default)
+            {
+                if (FileFullPath != default && FileFullPath.v != null) // The comparison *should* cause FileFullPath to initialize.
+                {
+                    try
+                    {
+                        return isDirectory = ((File.GetAttributes(FileFullPath.v) & FileAttributes.Directory) == FileAttributes.Directory, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        return (null, ex);
+                    }
+                }
+
+                return (null, new InvalidOperationException("Unable to query IsDirectory; This operation requires FileFullPath."));
+            }
+            else
+            {
+                return isDirectory;
+            }
+        }
+    }
+
+    public enum TypeOfFileHandle : uint
+    {
+        Unknown = FILE_TYPE.FILE_TYPE_UNKNOWN,
+        Disk = FILE_TYPE.FILE_TYPE_DISK,
+        Char = FILE_TYPE.FILE_TYPE_CHAR,
+        Pipe = FILE_TYPE.FILE_TYPE_PIPE,
+        Remote = FILE_TYPE.FILE_TYPE_REMOTE
+    }
 
     /// <summary>
     /// Try to get the absolute path of the file. Traverses filesystem links (e.g. symbolic, junction) to get the 'real' path.
