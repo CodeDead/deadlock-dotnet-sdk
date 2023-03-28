@@ -16,9 +16,6 @@ namespace deadlock_dotnet_sdk.Domain;
 
 internal static partial class NativeMethods
 {
-    private static List<ObjectTypeInformation>? objectTypes;
-    private static List<ObjectTypeInformation> ObjectTypes => objectTypes ??= ObjectTypesInformationBuffer.GetObjectTypes().ToList();
-
     /// <summary><para>
     /// The
     ///     <see href="https://www.geoffchappell.com/studies/windows/km/ntoskrnl/api/ex/sysinfo/handle_table_entry_ex.htm">
@@ -134,49 +131,29 @@ internal static partial class NativeMethods
         }
     }
 
-    internal sealed class ObjectTypesInformationBuffer : IDisposable
+    internal sealed class ObjectTypesInformationBuffer : SafeBuffer<OBJECT_TYPES_INFORMATION>
     {
-        private IntPtr pointer;
-        private uint bytes;
+        public ObjectTypesInformationBuffer(uint numBytes) : base(numBytes: numBytes)
+        { }
 
-        public ObjectTypesInformationBuffer(uint lengthInBytes)
+        private static List<ObjectTypeInformation>? objectTypes;
+        internal static List<ObjectTypeInformation> ObjectTypes => objectTypes ??= GetObjectTypes().GetTypesInfo().ToArray().Cast<ObjectTypeInformation>().ToList();
+        public unsafe uint NumberOfTypes => Read<OBJECT_TYPES_INFORMATION>(0).NumberOfTypes;
+
+        public unsafe List<ObjectTypeInformation> GetTypesInfo()
         {
-            pointer = Marshal.AllocHGlobal((int)lengthInBytes);
-            bytes = lengthInBytes;
+            Span<OBJECT_TYPE_INFORMATION> buffer = new(new OBJECT_TYPE_INFORMATION[NumberOfTypes]);
+            ReadSpan(
+                (ulong)Marshal.OffsetOf<OBJECT_TYPE_INFORMATION>(nameof(OBJECT_TYPES_INFORMATION.TypeInformation_0)),
+                buffer);
+            return buffer.ToArray().Cast<ObjectTypeInformation>().ToList();
         }
-
-        public IntPtr Pointer => pointer;
-        public uint SizeInBytes => bytes;
-        public unsafe uint NumberOfTypes => ((OBJECT_TYPES_INFORMATION*)pointer)->NumberOfTypes;
-
-        public unsafe List<ObjectTypeInformation> ToList()
-        {
-            var list = new List<ObjectTypeInformation>();
-            var selection = PH_FIRST_OBJECT_TYPE((void*)pointer);
-            list.Add(new(*selection));
-
-            for (int i = 1; i < NumberOfTypes; i++)
-            {
-                selection = PH_NEXT_OBJECT_TYPE(selection);
-                list.Add(new(*selection));
-            }
-            return list;
-        }
-
-        public unsafe void ReAllocate(uint lengthInBytes)
-        {
-            pointer = Marshal.ReAllocHGlobal(pointer, (IntPtr)lengthInBytes);
-            bytes = lengthInBytes;
-        }
-
-        public void Dispose() => Marshal.FreeHGlobal(pointer);
 
         /// <summary>
         /// P/Invoke NtQueryObject for ObjectTypesInformation data.
         /// </summary>
         /// <returns>An <see cref="ObjectTypesInformationBuffer"/>, a wrapper for OBJECT_TYPES_INFORMATION, OBJECT_TYPE_INFORMATION, and the allocated memory they occupy.</returns>
         /// <exception cref="NTStatusException"></exception>
-        /// <exception cref="PInvoke.NTStatusException"></exception>
         public static unsafe ObjectTypesInformationBuffer GetObjectTypes()
         {
             NTSTATUS status;
@@ -186,28 +163,21 @@ internal static partial class NativeMethods
             while ((status = NtQueryObject(
                 null,
                 OBJECT_INFORMATION_CLASS.ObjectTypesInformation,
-                (void*)buffer.pointer,
-                buffer.bytes,
+                (void*)buffer.handle,
+                (uint)buffer.ByteLength,
                 &returnLength
                 )) == STATUS_INFO_LENGTH_MISMATCH)
             {
-                // Fail if we're resizing the buffer to something very large.
-                const uint PH_LARGE_BUFFER_SIZE = int.MaxValue;
-                if (returnLength * 1.5 > PH_LARGE_BUFFER_SIZE)
-                    throw new NTStatusException(STATUS_INSUFFICIENT_RESOURCES);
-
-                buffer.ReAllocate((uint)(returnLength * 1.5));
+                buffer.Reallocate(returnLength);
             }
 
-            status.ThrowOnError();
+            return status.IsSuccessful ? buffer : throw new NTStatusException(status);
+        }
 
-            return buffer;
+        public new void Dispose()
+        {
+            Marshal.FreeHGlobal(handle);
+            base.Dispose();
         }
     }
-
-    public static unsafe OBJECT_TYPE_INFORMATION* PH_FIRST_OBJECT_TYPE(void* ObjectTypes) => (OBJECT_TYPE_INFORMATION*)PTR_ADD_OFFSET(ObjectTypes, ALIGN_UP((nuint)sizeof(OBJECT_TYPES_INFORMATION), typeof(UIntPtr)));
-    public static unsafe OBJECT_TYPE_INFORMATION* PH_NEXT_OBJECT_TYPE(OBJECT_TYPE_INFORMATION* ObjectType) => (OBJECT_TYPE_INFORMATION*)PTR_ADD_OFFSET(ObjectType, (nuint)Marshal.SizeOf<OBJECT_TYPE_INFORMATION>() + ALIGN_UP(ObjectType->TypeName.MaximumLength, typeof(UIntPtr)));
-    public static unsafe void* PTR_ADD_OFFSET(void* Pointer, nuint Offset) => (void*)((nuint)Pointer + Offset);
-    public static nuint ALIGN_UP(nuint Address, Type type) => ALIGN_UP_BY(Address, (uint)Marshal.SizeOf(type));
-    public static nuint ALIGN_UP_BY(nuint Address, uint Align) => (Address + Align - 1) & ~(Align - 1);
 }
