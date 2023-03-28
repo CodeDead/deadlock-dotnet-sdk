@@ -114,60 +114,38 @@ internal static partial class NativeMethods
         private readonly uint Reserved;
 #pragma warning restore RCS1213, CS0649, CS0169, IDE0051
 
-        /// <summary>
-        /// Get the Type of the object as a string<br/>
-        /// If calling from a SafeHandle
-        /// </summary>
+        /// <summary>Get the Type of the object as a string</summary>
         /// <exception cref="Exception">P/Invoke function NtQueryObject failed. See Exception data.</exception>
         /// <returns>The Type of the object as a string.</returns>
         public unsafe string GetHandleObjectType()
         {
-            /* CS1673: Anonymous methods, lambda expressions, query expressions, and local
-            functions inside structs cannot access instance members of 'this'.
-            Consider copying 'this' to a local variable outside the anonymous method, lambda
-            expression, query expression, or local function and using the local instead.
-            */
-            return PhGetObjectTypeName(ObjectTypeIndex);
+            try
+            {
+                NTSTATUS status;
+                using SafeBuffer<PUBLIC_OBJECT_TYPE_INFORMATION> buffer = new(numBytes: 256/* (nuint)Marshal.SizeOf<PUBLIC_OBJECT_TYPE_INFORMATION>() */);
+                uint returnLength;
+                using var h = new SafeObjectHandle(HandleValue, false);
 
-            //* Open a handle to the process associated with this system handle - adamkramer */
+                status = NtQueryObject(h, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, (void*)buffer.DangerousGetHandle(), (uint)buffer.ByteLength, &returnLength);
 
-            //using SafeFileHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, true, (uint)UniqueProcessId);
-            //if (hProcess is null || hProcess!.IsInvalid) throw new System.ComponentModel.Win32Exception();
+                // Something's off. Marshal.SizeOf() returns 0x68 (104) but returnLength is 0x78 (120) or sometimes 0x80 (128). Is Win32Metadata's type definition wrong?
+                while (status.Code is STATUS_BUFFER_OVERFLOW or STATUS_INFO_LENGTH_MISMATCH or STATUS_BUFFER_TOO_SMALL)
+                {
+                    buffer.Reallocate(returnLength);
+                    status = NtQueryObject(h, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, (void*)buffer.DangerousGetHandle(), (uint)buffer.ByteLength, &returnLength);
+                }
 
-            //* Duplicate this system handle so we can query it. - adamkramer */
-            /* sidebar: DuplicateHandle and NtDuplicateObject seem to have the same purpose, but are in the WinSDK and WDDK, respectively. Question is: Why? Why have two (technically three i.e. ZwDuplicateObject) functions that do the same thing? -BinToss */
+                if (status == STATUS_INVALID_HANDLE || !status.IsSuccessful)
+                    throw new NTStatusException(status);
 
-            // if (0 <= NtDuplicateObject(hProcess, HandleValue, Process.GetCurrentProcess().SafeHandle))
-            // {
-            // }
-            // 
-            // if (DuplicateHandle(hSourceProcessHandle: hProcess,
-            //                     hSourceHandle: new Kernel32.SafeObjectHandle(HandleValue),
-            //                     hTargetProcessHandle: Process.GetCurrentProcess().SafeHandle,
-            //                     lpTargetHandle: out SafeFileHandle lpTargetHandle,
-            //                     dwDesiredAccess: default,
-            //                     bInheritHandle: true,
-            //                     dwOptions: DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
-            // { }
+                return (string)buffer.Read<PUBLIC_OBJECT_TYPE_INFORMATION>(0).TypeName;
 
-            //* Query the object type */
-            // string typeName;
-            // PUBLIC_OBJECT_TYPE_INFORMATION* objectTypeInfo = (PUBLIC_OBJECT_TYPE_INFORMATION*)Marshal.AllocHGlobal(sizeof(PUBLIC_OBJECT_TYPE_INFORMATION));
-            // uint* returnLength = (uint*)Marshal.AllocHGlobal(sizeof(uint));
-            // NTSTATUS status;
-
-            // if ((status = NtQueryObject(HandleValue, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, objectTypeInfo, (uint)sizeof(PUBLIC_OBJECT_TYPE_INFORMATION), returnLength)).Severity == NTSTATUS.SeverityCode.STATUS_SEVERITY_SUCCESS)
-            // {
-            //     typeName = objectTypeInfo->TypeName.ToStringLength();
-            //     Marshal.FreeHGlobal((IntPtr)objectTypeInfo);
-            // }
-            // else
-            // {
-            //     Marshal.FreeHGlobal((IntPtr)objectTypeInfo);
-            //     throw new Exception("P/Invoke function NtQueryObject failed. See Exception data.", new NTStatusException(status));
-            // }
-
-            // return typeName;
+                // return GetObjectTypeName(ObjectTypeIndex);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
