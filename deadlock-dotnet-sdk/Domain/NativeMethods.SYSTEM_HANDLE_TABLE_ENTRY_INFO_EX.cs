@@ -19,7 +19,6 @@ namespace deadlock_dotnet_sdk.Domain;
 
 internal static partial class NativeMethods
 {
-    private const uint PH_LARGE_BUFFER_SIZE = int.MaxValue;
     private static List<ObjectTypeInformation>? objectTypes;
     private static List<ObjectTypeInformation> ObjectTypes => objectTypes ??= ObjectTypesInformationBuffer.PhEnumObjectTypes().ToList();
 
@@ -261,6 +260,7 @@ internal static partial class NativeMethods
                 )) == Code.STATUS_INFO_LENGTH_MISMATCH)
             {
                 // Fail if we're resizing the buffer to something very large.
+                const uint PH_LARGE_BUFFER_SIZE = int.MaxValue;
                 if (returnLength * 1.5 > PH_LARGE_BUFFER_SIZE)
                     throw new PInvoke.NTStatusException(Code.STATUS_INSUFFICIENT_RESOURCES);
 
