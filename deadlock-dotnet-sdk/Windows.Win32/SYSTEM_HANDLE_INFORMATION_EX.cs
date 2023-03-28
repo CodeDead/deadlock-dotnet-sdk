@@ -1,12 +1,3 @@
-// Re: StructLayout
-// "C#, Visual Basic, and C++ compilers apply the Sequential layout value to structures by default."
-// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.structlayoutattribute?view=net-6.0#remarks
-
-// new Win32Exception() is defined as
-// public Win32Exception() : this(Marshal.GetLastPInvokeError())
-// {
-// }
-
 namespace Windows.Win32;
 
 /// <summary>
