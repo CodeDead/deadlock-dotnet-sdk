@@ -98,6 +98,27 @@ internal static partial class NativeMethods
             }
         }
 
+        internal unsafe HANDLE_FLAGS GetHandleInformation()
+        {
+            try
+            {
+                using SafeObjectHandle hObject = new(HandleValue, false);
+                return Windows.Win32.PInvoke.GetHandleInformation(hObject);
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.ToString());
+            }
+
+            // If passing the source handle failed, try passing a duplicate instead
+
+            using SafeProcessHandle sourceProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, (uint)UniqueProcessId);
+            if (sourceProcess is null) throw new Win32Exception();
+            using SafeObjectHandle safeHandleValue = new(HandleValue, false);
+            DuplicateHandle(sourceProcess, safeHandleValue, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, default, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
+            return Windows.Win32.PInvoke.GetHandleInformation(dupHandle);
+        }
+
         /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
         /// <returns>True if the handle is for a file or directory.</returns>
         /// <remarks>Based on source of C/C++ projects <see href="https://www.x86matthew.com/view_post?id=hijack_file_handle">Hijack File Handle</see> and <see href="https://github.com/adamkramer/handle_monitor">Handle Monitor</see></remarks>
