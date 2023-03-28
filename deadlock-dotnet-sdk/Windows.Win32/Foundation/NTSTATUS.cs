@@ -20,17 +20,15 @@ readonly partial struct NTSTATUS
             throw new NTStatusException(this);
     }
 
-    public global::PInvoke.NTSTATUS.Code Code => ((global::PInvoke.NTSTATUS)this).Value;
-
-    /// <inheritdoc cref="Kernel32Extensions.GetMessage(global::PInvoke.NTSTATUS)"/>
-    public string Message => ((global::PInvoke.NTSTATUS)this).GetMessage();
-
     public Code Code => (Code)Value;
     public FacilityCode FacilityCode => ((global::PInvoke.NTSTATUS)this).Facility;
     /* property SeverityCode is defined in generated code */
+    /// <inheritdoc cref="Kernel32Extensions.GetMessage(global::PInvoke.NTSTATUS)"/>
+    public string Message => ((global::PInvoke.NTSTATUS)this).GetMessage();
 
     public static implicit operator global::PInvoke.NTSTATUS(NTSTATUS v) => new(v.Value);
     public static implicit operator NTSTATUS(global::PInvoke.NTSTATUS v) => new(v.AsInt32);
 
-    public static implicit operator Code(NTSTATUS v) => ((global::PInvoke.NTSTATUS)v).Value;
+    public static implicit operator Code(NTSTATUS v) => v.Code;
+    public static implicit operator NTSTATUS(Code v) => new((int)v);
 }
