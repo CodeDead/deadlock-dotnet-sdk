@@ -95,12 +95,12 @@ internal static partial class NativeMethods
             }
         }
 
-        internal unsafe HANDLE_FLAGS GetHandleInformation()
+        internal unsafe HANDLE_FLAGS GetHandleInfo()
         {
             try
             {
                 using SafeObjectHandle hObject = new(HandleValue, false);
-                return Windows.Win32.PInvoke.GetHandleInformation(hObject);
+                return GetHandleInformation(hObject);
             }
             catch (Exception ex)
             {
@@ -113,7 +113,7 @@ internal static partial class NativeMethods
             if (sourceProcess is null) throw new Win32Exception();
             using SafeObjectHandle safeHandleValue = new(HandleValue, false);
             DuplicateHandle(sourceProcess, safeHandleValue, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, default, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
-            return Windows.Win32.PInvoke.GetHandleInformation(dupHandle);
+            return GetHandleInformation(dupHandle);
         }
 
         /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
