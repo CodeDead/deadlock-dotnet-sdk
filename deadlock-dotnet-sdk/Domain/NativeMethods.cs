@@ -128,7 +128,6 @@ internal static partial class NativeMethods
     ///     When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
     /// </returns>
     /// <remarks><see href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debug-privilege">SeDebugMode</see> may be required for data from system and service processes. Restart app as admin and call <see cref="Process.EnterDebugMode"</see>.</remarks>
-    // TODO: Perhaps we should allow a new query without re-calling GetSystemHandleInfoEx().
     internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
         List<SafeFileHandleEx>? handles = new();
