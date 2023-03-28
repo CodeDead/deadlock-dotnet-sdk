@@ -92,21 +92,19 @@ internal static partial class NativeMethods
     public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
     {
 #pragma warning disable CS0649
-        private readonly unsafe void* Object;
-        public unsafe nuint ObjectPointer => (nuint)Object;
-        /// <summary>
-        /// ULONG_PTR, cast to HANDLE, int, or uint
-        /// </summary>
+        public nuint Object { get; }
+        /// <summary>ULONG_PTR, cast to HANDLE, int, or uint</summary>
         public nuint UniqueProcessId { get; }
-        /// <summary>
-        /// ULONG_PTR, cast to HANDLE
-        /// </summary>
+        /// <summary>ULONG_PTR, cast to HANDLE</summary>
         public HANDLE HandleValue { get; }
-        /// <summary>
-        /// This is a bitwise "Flags" data type.
-        /// See the "Granted Access" column in the Handles section of a process properties window in ProcessHacker.
-        /// </summary>
+        /// <summary>Get the HandleValue as a SafeObjectHandle. Closing this SafeObjectHandle does *not* close the source handle.</summary>
+        public SafeObjectHandle GetSafeHandle() => new(HandleValue, false);
+        /// <summary>This is a bitwise "Flags" data type.
+        /// See the "Granted Access" column in the Handles section of a process properties window in ProcessHacker.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
         public ACCESS_MASK GrantedAccess { get; } // uint
+        /// <summary>Note: SpecificRights requires the Type of `Object` and the code definitions of that Type's access rights.</summary>
+        public string GrantedAccessString => $"0x{GrantedAccess.Value:X} ({GrantedAccess.SpecificRights}, {GrantedAccess.StandardRights}, {GrantedAccess.GenericRights})";
         public ushort CreatorBackTraceIndex { get; } // USHORT
         /// <summary>ProcessHacker defines a little over a dozen handle-able object types.</summary>
         public ushort ObjectTypeIndex { get; } // USHORT
