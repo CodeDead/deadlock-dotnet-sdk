@@ -1,19 +1,16 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using Microsoft.Win32.SafeHandles;
+using PInvoke;
+using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.System.Threading;
 using Windows.Win32.System.WindowsProgramming;
 using static PInvoke.Kernel32;
+using static PInvoke.NTSTATUS.Code;
 using static Windows.Win32.PInvoke;
-using Code = PInvoke.NTSTATUS.Code;
-
-// Re: StructLayout
-// "C#, Visual Basic, and C++ compilers apply the Sequential layout value to structures by default."
-// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.structlayoutattribute?view=net-6.0#remarks
-
-// new Win32Exception() is defined as
-// public Win32Exception() : this(Marshal.GetLastPInvokeError())
-// {
-// }
+using NTSTATUS = Windows.Win32.Foundation.NTSTATUS;
 
 namespace deadlock_dotnet_sdk.Domain;
 
