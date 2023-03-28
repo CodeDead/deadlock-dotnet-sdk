@@ -96,7 +96,7 @@ internal static partial class NativeMethods
         /// <summary>ULONG_PTR, cast to HANDLE, int, or uint</summary>
         public nuint UniqueProcessId { get; }
         /// <summary>ULONG_PTR, cast to HANDLE</summary>
-        public HANDLE HandleValue { get; }
+        internal HANDLE HandleValue { get; }
         /// <summary>Get the HandleValue as a SafeObjectHandle. Closing this SafeObjectHandle does *not* close the source handle.</summary>
         public SafeObjectHandle GetSafeHandle() => new(HandleValue, false);
         /// <summary>This is a bitwise "Flags" data type.
