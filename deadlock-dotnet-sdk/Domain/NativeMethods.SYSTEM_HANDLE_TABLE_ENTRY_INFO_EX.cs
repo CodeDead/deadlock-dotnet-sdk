@@ -20,57 +20,7 @@ namespace deadlock_dotnet_sdk.Domain;
 internal static partial class NativeMethods
 {
     private static List<ObjectTypeInformation>? objectTypes;
-    private static List<ObjectTypeInformation> ObjectTypes => objectTypes ??= ObjectTypesInformationBuffer.PhEnumObjectTypes().ToList();
-
-    /// <summary>
-    /// ported from SystemInformer for convenience
-    /// </summary>
-    private static uint? PhGetObjectTypeNumber(string typeName)
-    {
-        uint objectIndex = uint.MaxValue;
-
-        for (int i = 0; i < ObjectTypes.Count; i++)
-        {
-            if (typeName.Equals(ObjectTypes[i].TypeName, StringComparison.OrdinalIgnoreCase))
-            {
-                if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
-                    objectIndex = ObjectTypes[i].TypeIndex;
-                else
-                    objectIndex = (uint)(i + 2);
-            }
-        }
-
-        if (objectIndex is uint.MaxValue)
-            throw new InvalidOperationException("No matching Type found.");
-
-        return objectIndex;
-    }
-
-    /// <summary>
-    /// ported from SystemInformer for convenience
-    /// </summary>
-    private static string PhGetObjectTypeName(int typeIndex)
-    {
-        string objectTypeName = "";
-
-        for (int i = 0; i < ObjectTypes.Count; i++)
-        {
-            if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
-            {
-                if (typeIndex == ObjectTypes[i].TypeIndex)
-                    objectTypeName = ObjectTypes[i].TypeName;
-            }
-            else if (typeIndex == (i + 2))
-            {
-                objectTypeName = ObjectTypes[i].TypeName;
-            }
-        }
-
-        if (objectTypeName is "")
-            throw new InvalidOperationException("No matching Type found.");
-
-        return objectTypeName;
-    }
+    private static List<ObjectTypeInformation> ObjectTypes => objectTypes ??= ObjectTypesInformationBuffer.GetObjectTypes().ToList();
 
     /// <summary><para>
     /// The
@@ -221,7 +171,7 @@ internal static partial class NativeMethods
         /// <returns>An <see cref="ObjectTypesInformationBuffer"/>, a wrapper for OBJECT_TYPES_INFORMATION, OBJECT_TYPE_INFORMATION, and the allocated memory they occupy.</returns>
         /// <exception cref="NTStatusException"></exception>
         /// <exception cref="PInvoke.NTStatusException"></exception>
-        public static unsafe ObjectTypesInformationBuffer PhEnumObjectTypes()
+        public static unsafe ObjectTypesInformationBuffer GetObjectTypes()
         {
             NTSTATUS status;
             using ObjectTypesInformationBuffer buffer = new(0x1000);
@@ -233,12 +183,12 @@ internal static partial class NativeMethods
                 (void*)buffer.pointer,
                 buffer.bytes,
                 &returnLength
-                )) == Code.STATUS_INFO_LENGTH_MISMATCH)
+                )) == STATUS_INFO_LENGTH_MISMATCH)
             {
                 // Fail if we're resizing the buffer to something very large.
                 const uint PH_LARGE_BUFFER_SIZE = int.MaxValue;
                 if (returnLength * 1.5 > PH_LARGE_BUFFER_SIZE)
-                    throw new PInvoke.NTStatusException(Code.STATUS_INSUFFICIENT_RESOURCES);
+                    throw new NTStatusException(STATUS_INSUFFICIENT_RESOURCES);
 
                 buffer.ReAllocate((uint)(returnLength * 1.5));
             }
@@ -246,73 +196,6 @@ internal static partial class NativeMethods
             status.ThrowOnError();
 
             return buffer;
-        }
-
-        public unsafe uint PhGetObjectTypeNumber(string typeName)
-        {
-            OBJECT_TYPE_INFORMATION* objectType;
-            uint objectIndex = uint.MaxValue;
-            uint i;
-
-            if (NumberOfTypes != default)
-            {
-                objectType = PH_FIRST_OBJECT_TYPE((void*)pointer);
-
-                for (i = 0; i < NumberOfTypes; i++)
-                {
-                    string typeNameSr = (string)objectType->TypeName;
-
-                    if (string.Equals(typeNameSr, typeName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
-                        {
-                            objectIndex = objectType->TypeIndex;
-                            break;
-                        }
-                        else
-                        {
-                            objectIndex = i + 2;
-                            break;
-                        }
-                    }
-
-                    objectType = PH_NEXT_OBJECT_TYPE(objectType);
-                }
-            }
-            return objectIndex;
-        }
-
-        public unsafe string? PhGetObjectTypeName(uint TypeIndex)
-        {
-            OBJECT_TYPE_INFORMATION* objectType;
-            string? objectTypeName = null;
-            uint i;
-
-            objectType = PH_FIRST_OBJECT_TYPE((void*)pointer);
-
-            for (i = 0; i < NumberOfTypes; i++)
-            {
-                if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
-                {
-                    if (TypeIndex == objectType->TypeIndex)
-                    {
-                        objectTypeName = (string)objectType->TypeName;
-                        break;
-                    }
-                }
-                else
-                {
-                    if (TypeIndex == (i + 2))
-                    {
-                        objectTypeName = (string)objectType->TypeName;
-                        break;
-                    }
-                }
-
-                objectType = PH_NEXT_OBJECT_TYPE(objectType);
-            }
-
-            return objectTypeName;
         }
     }
 
