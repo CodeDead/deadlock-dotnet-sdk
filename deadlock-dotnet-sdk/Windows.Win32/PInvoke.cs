@@ -208,4 +208,6 @@ static partial class PInvoke
     /// <inheritdoc cref="OpenProcessToken(SafeHandle, TOKEN_ACCESS_MASK, out SafeFileHandle)"/>
     internal static SafeFileHandle OpenProcessToken(SafeFileHandle ProcessHandle, TOKEN_ACCESS_MASK DesiredAccess)
         => OpenProcessToken(ProcessHandle, DesiredAccess, out SafeFileHandle TokenHandle) ? TokenHandle : throw new Win32Exception();
+
+    internal static HANDLE_FLAGS GetHandleInformation(SafeHandle hObject) => (HANDLE_FLAGS)(GetHandleInformation(hObject, out uint flags) ? flags : throw new Win32Exception());
 }
