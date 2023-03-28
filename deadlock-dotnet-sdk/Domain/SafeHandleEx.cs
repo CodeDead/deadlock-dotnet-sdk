@@ -178,6 +178,21 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 
+    private (string? v, Exception? ex) TryGetFullProcessImageName()
+    {
+        try
+        {
+            return (GetFullProcessImageName(ProcessId), null);
+        }
+        catch (Win32Exception ex) when (ex.ErrorCode == 31)
+        {
+            return (null, new InvalidOperationException("Process has exited, so the requested information is not available.", ex));
+        }
+        catch (Exception ex)
+        {
+            return (null, ex);
+        }
+    }
 
     /// <summary>
     /// A wrapper for QueryFullProcessImageName, a system function that circumvents 32-bit process limitations when permitted the PROCESS_QUERY_LIMITED_INFORMATION right.
@@ -186,7 +201,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <returns>The path to the executable image.</returns>
     /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
     /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
-    private unsafe static string? GetFullProcessImageName(uint processId)
+    private unsafe static string GetFullProcessImageName(uint processId)
     {
         uint size = 260 + 1;
         uint bufferLength = size;
@@ -202,19 +217,18 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
         else if (bufferLength < size)
         {
-            using PWSTR newBuffer = Marshal.ReAllocHGlobal((IntPtr)buffer.Value, (IntPtr)size);
+            using PWSTR newBuffer = Marshal.AllocHGlobal((IntPtr)size);
             if (QueryFullProcessImageName(
-                hProcess,
-                PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-                newBuffer,
-                ref size))
+                            hProcess,
+                            PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
+                            newBuffer,
+                            ref size))
             {
-                return newBuffer.ToString();
+                return newBuffer.ToString(); // newBuffer.Value will not be null here
             }
             else
             {
-                // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
-                throw new Win32Exception();
+                throw new Win32Exception(); // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
             }
         }
         else
