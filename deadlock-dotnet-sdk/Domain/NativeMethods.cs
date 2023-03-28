@@ -77,7 +77,8 @@ internal static partial class NativeMethods
                 pnProcInfo = pnProcInfoNeeded;
 
                 fixed (RM_PROCESS_INFO* pProcessInfo = processInfo)
-                    res = (Win32ErrorCode)RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, pProcessInfo, out lpdwRebootReasons); if (res is Win32ErrorCode.ERROR_SUCCESS)
+                    res = (Win32ErrorCode)RmGetList(handle, out pnProcInfoNeeded, ref pnProcInfo, pProcessInfo, out lpdwRebootReasons);
+                if (res is Win32ErrorCode.ERROR_SUCCESS)
                 {
                     processes = new List<Process>((int)pnProcInfo);
 
