@@ -240,11 +240,10 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 
     private static (string? v, Exception? ex) GetProcessCommandLine(uint processId)
     {
-        Exception exceptionData = null;
-
         if (processId == (uint)Environment.ProcessId)
             return (Environment.CommandLine, null);
 
+        Exception? exceptionData = default;
         try
         {
             if (!IsDebugModeEnabled())
@@ -261,7 +260,8 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 
         try
         {
-            return GetProcessCommandLine(hProcess);
+            //todo: amend GetProcessCommandLine commit
+            return (GetProcessCommandLine(hProcess), null);
         }
         catch (Exception ex)
         {
