@@ -13,6 +13,7 @@ using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace deadlock_dotnet_sdk.Domain;
 
+//TODO: check if handle is closed. If true, FileLockerEx can remove this object from its locker list. See relevant TODO in FileLockerEx
 /// <summary>
 /// A SafeHandleZeroOrMinusOneIsInvalid wrapping a SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX<br/>
 /// Before querying for system handles, call <see cref="Process.EnterDebugMode()"/>
@@ -22,7 +23,11 @@ namespace deadlock_dotnet_sdk.Domain;
 /// </summary>
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
-    private string? processCommandLine;
+    private (string? v, Exception? ex) processCommandLine;
+    private (string? v, Exception? ex) handleObjectType;
+    private (string? v, Exception? ex) processMainModulePath;
+    private (string? v, Exception? ex) processName;
+    private (bool? v, Exception? ex) processIsProtected;
 
     public SafeHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
     { }
@@ -36,80 +41,158 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         SysHandleEx = sysHandleEx;
         handle = sysHandleEx.HandleValue;
 
-        try
-        {
-            HandleObjectType = SysHandleEx.GetHandleObjectType();
-        }
-        catch (Exception e)
-        {
-            ExceptionLog.Add(e);
-        }
-
+#if DEBUG
         // Get additional details from the handle's owner process
-        try
-        {
-            /** Open handle for process */
-            // PROCESS_QUERY_LIMITED_INFORMATION is necessary for QueryFullProcessImageName
-            // PROCESS_QUERY_LIMITED_INFORMATION + PROCESS_VM_READ for reading PEB from the process's memory space.
-            // if we need to duplicate a handle later, we'll use PROCESS_DUP_HANDLE
-
-            if (ProcessId == 0)
-            {
-                ProcessName = "System Idle Process";
-            }
-            else if (ProcessId == 4)
-            {
-                ProcessName = "System";
-            }
-            else
-            {
-                try
+        // WARNING: if a breakpoint is placed in a dependency's Get accessor, the dependent's Get accessor may fail.
+        _ = ProcessIsProtected;
+        List<Task> tasks = new Task[]{
+                new Task(() => _ = HandleObjectType), // Get kernel object type of the handle's object
+                new Task(() => _ = ProcessName), // Get Process's name 
+                new Task(() =>
                 {
-                    ProcessName = Process.GetProcessById((int)ProcessId).ProcessName;
-                }
-                catch (Exception e)
+                    if (ProcessIsProtected.v == false) _ = ProcessMainModulePath; // Get main module's full path
+                }),
+                new Task(() =>
                 {
-                    ExceptionLog.Add(e);
-                }
+                    if (ProcessIsProtected.v == false) _ = ProcessCommandLine; // Get process's possibly-overwritten command line from the PEB struct in its memory space
+                })
+            }.ToList();
+        foreach (var task in tasks) { task.Start(); }
+        //_ = Task.WhenAll(tasks); // uncomment if we need to check the tasks' results
 
-                /** Get main module's full path */
-                try
-                {
-                    ProcessMainModulePath = GetFullProcessImageName(ProcessId);
-                }
-                catch (Exception e)
-                {
-                    ExceptionLog.Add(e);
-                }
-
-                /** Get Process's name */
-                if (!string.IsNullOrWhiteSpace(ProcessMainModulePath))
-                    ProcessName = Path.GetFileNameWithoutExtension(ProcessMainModulePath);
-
-                /** Get process's possibly-overwritten command line from the PEB struct in its memory space */
-                //ProcessCommandLine = GetProcessCommandLine(ProcessId);
-                // moved to property's Get accessor
-            }
-        }
-        catch (Exception e)
-        {
-            ExceptionLog.Add(e);
-        }
+        Console.Out.WriteLine(
+            value: "Handle: " + HandleValue + Console.Out.NewLine +
+                   ToString());
+#endif
     }
 
-    internal NativeMethods.SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX SysHandleEx { get; }
+    internal SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX SysHandleEx { get; }
 
-    public unsafe UIntPtr Object => SysHandleEx.ObjectPointer;
+    public unsafe UIntPtr ObjectAddress => SysHandleEx.Object;
     public uint ProcessId => (uint)SysHandleEx.UniqueProcessId;
     public nuint HandleValue => SysHandleEx.HandleValue;
     public ushort CreatorBackTraceIndex => SysHandleEx.CreatorBackTraceIndex;
     /// <inheritdoc cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX.GrantedAccess"/>
     public ACCESS_MASK GrantedAccess => SysHandleEx.GrantedAccess;
+    public string GrantedAccessString => SysHandleEx.GrantedAccessString;
+    /// <summary>The Type of the object as a string.</summary>
+    public (string? v, Exception? ex) HandleObjectType
+    {
+        get
+        {
+            if (handleObjectType == default && ProcessIsProtected != default)
+            {
+                if (ProcessIsProtected.v == false)
+                {
+                    try { return handleObjectType = (SysHandleEx.GetHandleObjectType(), null); }
+                    catch (Exception e) { return (null, e); }
+                }
+                else if (ProcessIsProtected.v == true)
+                {
+                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; The process is protected."));
+                }
+                else
+                {
+                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex));
+                }
+            }
+            else
+            {
+                return handleObjectType;
+            }
+        }
+    }
+
+    //public bool ProcessIs64Bit { get; } // unused, for now
+    //TODO: change from nullable bool to nullable enum. Light protection allows querying the command line while Full protection does not.
+    public unsafe (bool? v, Exception? ex) ProcessIsProtected
+    {
+        get
+        {
+            if (processIsProtected == default)
+            {
+                const uint ProcessProtectionInformation = 61; // Retrieves a BYTE value indicating the type of protected process and the protected process signer.
+                PS_PROTECTION protection = default;
+                uint retLength = 0;
+
+                using SafeProcessHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, ProcessId);
+                NTSTATUS status = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)ProcessProtectionInformation, &protection, 1, ref retLength);
+
+                return status.Code == PInvoke.NTSTATUS.Code.STATUS_SUCCESS
+                    ? (processIsProtected = (protection.Type > 0, null))
+                    : (processIsProtected = (null, new NTStatusException(status)));
+            }
+            else
+            {
+                return processIsProtected;
+            }
+        }
+    }
+    public (string? v, Exception? ex) ProcessCommandLine => processCommandLine == default ? (processCommandLine = GetProcessCommandLine(ProcessId)) : processCommandLine;
     /// <summary>
-    /// The Type of the object as a string.
+    /// The full file path of the handle-owning process's main module (the executable file) or an exception if the Get operation failed.
     /// </summary>
-    /// <value></value>
-    public string? HandleObjectType { get; }
+    /// <value>
+    /// v: If the query succeeded, the full file path of the process's main module, the executable file.<br/>
+    /// ex: If the query failed, the error encountered when attempting to query the full file path of the process's main module.
+    /// </value>
+    /// <remarks>If IsProtected.v is true or null, returns InvalidOperationException. The queryable details of protected processes (System, Registry, etc.) are limited..</remarks>
+    public (string? v, Exception? ex) ProcessMainModulePath
+    {
+        get
+        {
+            if (processMainModulePath == default && ProcessIsProtected != default)
+            {
+                if (ProcessIsProtected.v == false)
+                {
+                    return processMainModulePath = TryGetFullProcessImageName();
+                }
+                else if (ProcessIsProtected.v == true)
+                {
+                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; The process is protected."));
+                }
+                else // assume IsProcessProtected returned an Exception
+                {
+                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex));
+                }
+            }
+            return processMainModulePath;
+        }
+    }
+
+    public (string? v, Exception? ex) ProcessName
+    {
+        get
+        {
+            if (processName == default)
+            {
+                switch (ProcessId)
+                {
+                    case 0:
+                        processName = ("System Idle Process", null);
+                        break;
+                    case 4:
+                        processName = ("System", null);
+                        break;
+                    default:
+                        try
+                        {
+                            var proc = Process.GetProcessById((int)ProcessId);
+                            if (proc.HasExited)
+                                processName = (null, new InvalidOperationException("Process has exited, so the requested information is not available."));
+                            else processName = (Process.GetProcessById((int)ProcessId).ProcessName, null);
+                        }
+                        catch (Exception ex)
+                        {
+                            processName = (null, ex);
+                        }
+                        break;
+                }
+            }
+            return processName;
+        }
+    }
+
     //public bool ProcessIs64Bit { get; } // unused, for now
     //internal PEB_Ex? PebEx { get; } // Won't need this unless we want to start accessing otherwise unread pointer-type members of the PEB and its children (e.g. PEB_LDR_DATA, CURDIR, et cetera)
 
