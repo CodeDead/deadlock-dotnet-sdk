@@ -31,7 +31,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// Initializes a new instance of the <c>SafeHandleEx</c> class from a <see cref="SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX"/>, specifying whether the handle is to be reliably released.
     /// </summary>
     /// <param name="sysHandleEx"></param>
-    internal SafeHandleEx(NativeMethods.SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(false)
+    internal SafeHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(false)
     {
         SysHandleEx = sysHandleEx;
         handle = sysHandleEx.HandleValue;
@@ -111,19 +111,9 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <value></value>
     public string? HandleObjectType { get; }
     //public bool ProcessIs64Bit { get; } // unused, for now
-    public string? ProcessCommandLine
-    {
-        get => processCommandLine ??= GetProcessCommandLine(ProcessId); // if null, call function and assign value
-        init { processCommandLine = value; }
-    }
-    public string? ProcessMainModulePath { get; }
-    public string? ProcessName { get; }
     //internal PEB_Ex? PebEx { get; } // Won't need this unless we want to start accessing otherwise unread pointer-type members of the PEB and its children (e.g. PEB_LDR_DATA, CURDIR, et cetera)
 
-    /// <summary>
-    /// A list of exceptions thrown by constructors and other methods of this class.<br/>
-    /// Intended to explain why the process command line, main module path, and name are unavailable.
-    /// </summary>
+    /// <summary>A list of exceptions thrown by constructors and other methods of this class.</summary>
     /// <remarks>Use List's methods (e.g. Add) to modify this list.</remarks>
     public List<Exception> ExceptionLog { get; } = new();
 
