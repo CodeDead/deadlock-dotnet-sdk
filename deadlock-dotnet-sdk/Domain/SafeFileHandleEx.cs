@@ -206,27 +206,27 @@ public class SafeFileHandleEx : SafeHandleEx
         string[] exLog = ExceptionLog.Cast<string>().ToArray();
         for (int i = 0; i < exLog.Length; i++)
         {
-            exLog[i] = $" {exLog[i]}".Replace("\n", "\n    ");
+            exLog[i] = $" {exLog[i]}".Replace("\n", "\n    ") + Environment.NewLine;
         }
 
         return @$"{GetType().Name} hash:{GetHashCode()}
         {nameof(CreatorBackTraceIndex)} : {CreatorBackTraceIndex}
-        {nameof(FileFullPath)}          : {FileFullPath}
-        {nameof(IsDirectory)}           : {IsDirectory}
-        {nameof(FileName)}              : {FileName}
-        {nameof(GrantedAccess)}         : {GrantedAccess}
-        {nameof(handle)}                : {handle}
-        {nameof(HandleObjectType)}      : {HandleObjectType}
-        {nameof(HandleValue)}           : {HandleValue}
+        {nameof(FileFullPath)}          : {FileFullPath.v ?? FileFullPath.ex?.ToString()}
+        {nameof(FileHandleType)}        : {FileHandleType.v?.ToString() ?? FileFullPath.ex?.ToString()} 
+        {nameof(FileName)}              : {FileName.v ?? FileName.ex?.ToString()}
+        {nameof(GrantedAccess)}         : {SysHandleEx.GrantedAccessString}
+        {nameof(HandleObjectType)}      : {HandleObjectType.v ?? HandleObjectType.ex?.ToString()}
+        {nameof(HandleValue)}           : {HandleValue} (0x{HandleValue:X})
         {nameof(IsClosed)}              : {IsClosed}
-        {nameof(IsFileHandle)}          : {IsFileHandle}
+        {nameof(IsDirectory)}           : {IsDirectory.v?.ToString() ?? IsDirectory.ex?.ToString()}
+        {nameof(IsFileHandle)}          : {IsFileHandle.v?.ToString() ?? IsFileHandle.ex?.ToString()}
         {nameof(IsInvalid)}             : {IsInvalid}
-        {nameof(Object)}                : {Object}
-        {nameof(ProcessCommandLine)}    : {ProcessCommandLine}
+        {nameof(ObjectAddress)}         : {ObjectAddress} (0x{ObjectAddress:X})
+        {nameof(ProcessCommandLine)}    : {ProcessCommandLine.v ?? ProcessCommandLine.ex?.ToString()}
         {nameof(ProcessId)}             : {ProcessId}
-        {nameof(ProcessMainModulePath)} : {ProcessMainModulePath}
-        {nameof(ProcessName)}           : {ProcessName}
+        {nameof(ProcessMainModulePath)} : {ProcessMainModulePath.v ?? ProcessMainModulePath.ex?.ToString()}
+        {nameof(ProcessName)}           : {ProcessName.v ?? ProcessName.ex?.ToString()}
         {nameof(ExceptionLog)}          : ...        
-        " + exLog;
+        " + string.Concat(exLog);
     }
 }
