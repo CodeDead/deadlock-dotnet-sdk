@@ -117,6 +117,8 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <remarks>Use List's methods (e.g. Add) to modify this list.</remarks>
     public List<Exception> ExceptionLog { get; } = new();
 
+    #region Methods
+
     /// <summary>
     /// Release the system handle.<br/>
     /// ! WARNING !<br/>
@@ -271,7 +273,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             throw new ArgumentException("The provided process handle is invalid.", paramName: nameof(hProcess));
 
         if (!IsWow64Process(hProcess, out BOOL targetIs32BitProcess))
-            throw new Win32Exception();
+            throw new Win32Exception("Failed to determine target process is running under WOW: {0}");
 
         bool weAre32BitAndTheyAre64Bit = !Environment.Is64BitProcess && !targetIs32BitProcess;
         bool weAre64BitAndTheyAre32Bit = Environment.Is64BitProcess && targetIs32BitProcess;
@@ -515,5 +517,5 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         return IsClosed;
     }
 
-    internal SafeHandle ToSafeFileHandle() => SysHandleEx.ToSafeFileHandle();
+    #endregion Methods
 }
