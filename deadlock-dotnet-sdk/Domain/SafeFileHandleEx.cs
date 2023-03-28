@@ -150,34 +150,38 @@ public class SafeFileHandleEx : SafeHandleEx
     /// <exception cref="FileNotFoundException(string, string)">The path '{fullName}' was not found when querying a file handle.</exception>
     /// <exception cref="OutOfMemoryException(string)">Failed to query path from file handle. Insufficient memory to complete the operation.</exception>
     /// <exception cref="ArgumentException(string)">Failed to query path from file handle. Invalid flags were specified for dwFlags.</exception>
-    private unsafe string TryGetFinalPath()
+    private unsafe (string? v, Exception? ex) TryGetFinalPath()
     {
-        if (ProcessId == 4) throw new InvalidOperationException("Cannot access handle object information if handle is held by System (PID 4)");
+        if (ProcessIsProtected != default && ProcessIsProtected.v is true)
+            return (null, new InvalidOperationException("Unable to query file path or pipe name; The process is protected."));
+        else if (ProcessIsProtected.v is null)
+            return (null, new InvalidOperationException("Unable to query file path or pipe name; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex));
 
         /// Return the normalized drive name. This is the default.
-        uint bufLength = (uint)short.MaxValue;
-        var buffer = Marshal.AllocHGlobal((int)bufLength);
-        PWSTR fullName = new((char*)buffer);
-        var processHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
+        using SafeProcessHandle processHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
         if (processHandle is null || processHandle?.IsInvalid == true)
-            throw new Win32Exception();
+            return (null, new Win32Exception());
 
-        if (!DuplicateHandle(processHandle, new SafeFileHandle((nint)HandleValue, false), Process.GetCurrentProcess().SafeHandle, out SafeFileHandle? dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
-            throw new Win32Exception();
+        if (!DuplicateHandle(processHandle, this, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
+            return (null, new Win32Exception());
 
-        uint length = GetFinalPathNameByHandle(dupHandle, fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+        uint bufLength = (uint)short.MaxValue;
+        using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufLength));
+        uint length = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
 
         if (length != 0)
         {
-            while (length > bufLength)
+            if (length > bufLength)
             {
                 // buffer was too small. Reallocate buffer with size matched 'length' and try again
-                buffer = Marshal.ReAllocHGlobal(buffer, (IntPtr)length);
-                fullName = new((char*)buffer);
-
-                bufLength = GetFinalPathNameByHandle(dupHandle, fullName, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+                using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
+                bufLength = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+                return (newBuffer.ToString(), null);
             }
-            return fullName.ToString();
+            else
+            {
+                return (buffer.ToString(), null);
+            }
         }
         else
         {
@@ -189,10 +193,10 @@ public class SafeFileHandleEx : SafeHandleEx
 
             throw error switch
             {
-                Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{fullName}' was not found when querying a file handle.", fileName: fullName.ToString()), // Removable storage, deleted item, network shares, et cetera
-                Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException("Failed to query path from file handle. Insufficient memory to complete the operation."), // unlikely, but possible if system has little free memory
-                Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags."), // possible only if FILE_NAME_NORMALIZED (0) is invalid
-                _ => new Exception($"An undocumented error ({error}) was returned when querying a file handle for its path."),
+                Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(error)), // Removable storage, deleted item, network shares, et cetera
+                Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException("Failed to query path from file handle. Insufficient memory to complete the operation.", new Win32Exception(error)), // unlikely, but possible if system has little free memory
+                Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags.", new Win32Exception(error)), // possible only if FILE_NAME_NORMALIZED (0) is invalid
+                _ => new Exception($"An undocumented error ({error}) was returned when querying a file handle for its path.", new Win32Exception(error))
             };
         }
     }
