@@ -188,9 +188,6 @@ public class SafeFileHandleEx : SafeHandleEx
             Win32ErrorCode error = (Win32ErrorCode)Marshal.GetLastWin32Error();
             Debug.Print(error.GetMessage());
 
-            /* Hold up. Let's free our memory before throwing exceptions. */
-            Marshal.FreeHGlobal(buffer);
-
             throw error switch
             {
                 Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(error)), // Removable storage, deleted item, network shares, et cetera
