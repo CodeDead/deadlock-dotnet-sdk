@@ -25,7 +25,7 @@ namespace deadlock_dotnet_sdk.Domain;
 /// <summary>
 /// Collection of native methods
 /// </summary>
-internal static partial class NativeMethods
+internal static class NativeMethods
 {
     #region Variables
 
