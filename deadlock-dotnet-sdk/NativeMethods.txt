@@ -79,3 +79,4 @@ RTL_CRITICAL_SECTION
 SE_DEBUG_NAME
 //ProcessProtectionInformation // PInvoke001: Method, type or constant "ProcessProtectionInformation" not found.
 //PS_PROTECTION //  PInvoke001: Method, type or constant "PS_PROTECTION" not found.
+//PsProtectedTypeProtected // PInvoke001: Method, type or constant "PsProtectedTypeProtected" not found
