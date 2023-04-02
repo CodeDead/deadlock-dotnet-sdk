@@ -40,30 +40,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         SysHandleEx = sysHandleEx;
         handle = sysHandleEx.HandleValue;
-
-#if DEBUG
-        // Get additional details from the handle's owner process
-        // WARNING: if a breakpoint is placed in a dependency's Get accessor, the dependent's Get accessor may fail.
-        _ = ProcessIsProtected;
-        List<Task> tasks = new Task[]{
-                new Task(() => _ = HandleObjectType), // Get kernel object type of the handle's object
-                new Task(() => _ = ProcessName), // Get Process's name 
-                new Task(() =>
-                {
-                    if (ProcessIsProtected.v == false) _ = ProcessMainModulePath; // Get main module's full path
-                }),
-                new Task(() =>
-                {
-                    if (ProcessIsProtected.v == false) _ = ProcessCommandLine; // Get process's possibly-overwritten command line from the PEB struct in its memory space
-                })
-            }.ToList();
-        foreach (var task in tasks) { task.Start(); }
-        //_ = Task.WhenAll(tasks); // uncomment if we need to check the tasks' results
-
-        Console.Out.WriteLine(
-            value: "Handle: " + HandleValue + Console.Out.NewLine +
-                   ToString());
-#endif
     }
 
     internal SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX SysHandleEx { get; }

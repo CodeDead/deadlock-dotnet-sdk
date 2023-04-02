@@ -51,19 +51,8 @@ public class SafeFileHandleEx : SafeHandleEx
                     if (ProcessName.v is "smss")
                     {
                         ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
-                        return;
                     }
                 }
-
-#if DEBUG
-                _ = FileHandleType;
-                if (FileHandleType.v == TypeOfFileHandle.Disk)
-                {
-                    _ = FileFullPath;
-                    _ = FileName;
-                    _ = IsDirectory;
-                }
-#endif
             }
             catch (Exception e)
             {
