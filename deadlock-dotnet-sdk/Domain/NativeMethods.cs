@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using deadlock_dotnet_sdk.Exceptions;
 using PInvoke;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.RestartManager;
 using Windows.Win32.System.WindowsProgramming;
@@ -119,16 +120,14 @@ internal static class NativeMethods
     ///     paths contain this query string.
     /// </param>
     /// <param name="filter">
-    ///     By default, this method only returns handles for objects
-    ///     successfully identified as a file/directory ("File").
-    ///     <see cref="HandlesFilter.IncludeNonFiles"/> and <see cref="HandlesFilter.IncludeFailedTypeQuery"/>
+    ///     By default, this method only returns handles for objects successfully identified as a File.
+    ///     File objects' sub-type can be Directory, File, "File or Directory", Network, Other, or Pipe.
     /// </param>
     /// <returns>
-    ///     A list of SafeFileHandleEx objects.
-    ///     When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
+    ///     A list of SafeFileHandleEx objects. When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
     /// </returns>
-    /// <remarks><see href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debug-privilege">SeDebugMode</see> may be required for data from system and service processes. Restart app as admin and call <see cref="Process.EnterDebugMode"</see>.</remarks>
-    internal static List<SafeFileHandleEx> FindLockingHandles(string? query = null, HandlesFilter filter = HandlesFilter.FilesOnly)
+    /// TODO: optimize process inspection. Stuff like IsProcessProtected should only be queried once per process
+    internal static List<SafeFileHandleEx> FindLockingHandles(string query, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
         List<SafeFileHandleEx>? handles = new();
 
@@ -144,20 +143,36 @@ internal static class NativeMethods
 
         bool Discard(SafeFileHandleEx h)
         {
-            if (h.HandleObjectType is not null)
+            bool keep = false;
+
+            // Check filters in reverse order
+            if (filter.HasFlag(HandlesFilter.IncludeProtectedProcesses))
             {
-                /* Query for object type succeeded and the type is NOT File */
-                if (h.HandleObjectType != "File")
-                {
-                    return !filter.HasFlag(HandlesFilter.IncludeNonFiles); // When requested, keep non-File object handle. Else, discard.
-                }
-                // Discard handle if Query and file's path are not null and file's path does not contain query */
-                return (query is not null) && (h.FileFullPath?.Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)) == false);
+                // if a process is protected, do not discard the handle
+                keep = h.ProcessIsProtected.v is true;
             }
-            else
+            if (!keep && filter.HasFlag(HandlesFilter.IncludeNonFiles))
             {
-                return !filter.HasFlag(HandlesFilter.IncludeFailedTypeQuery); // When requested, keep handle if the object type query failed. Else, discard.
+                // keep if object type query succeeded
+                keep = !string.IsNullOrWhiteSpace(h.HandleObjectType.v);
             }
+            if (!keep && filter.HasFlag(HandlesFilter.IncludeFailedTypeQuery))
+            {
+                keep = string.IsNullOrWhiteSpace(h.HandleObjectType.v);
+            }
+            if (!keep && filter is HandlesFilter.FilesOnly)
+            {
+                // only keep if handle object is 'File'
+                // note: File objects' sub-type can be Directory, File, "File or Directory", Network, Other, or Pipe.
+                keep = h.IsFileHandle.v is true;
+            }
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                // only keep if FullFilePath contains query (with normalized directory separators)
+                keep = h.FileFullPath.v?.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)) is true;
+            }
+
+            return !keep;
         }
     }
 
