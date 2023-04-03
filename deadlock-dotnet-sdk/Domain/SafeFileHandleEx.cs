@@ -93,11 +93,27 @@ public class SafeFileHandleEx : SafeHandleEx
 
     public (string? v, Exception? ex) FileFullPath => fileFullPath == default ? (fileFullPath = TryGetFinalPath()) : fileFullPath;
 
-    public (string? v, Exception? ex) FileName => fileName == default
-                ? FileFullPath != default && FileFullPath.v is not null
-                    ? (fileName = (Path.GetFileName(FileFullPath.v), null))
-                    : (fileName = (null, new InvalidOperationException("Unable to query FileName; This operation requires FileFullPath.")))
-                : fileName;
+    public (string? v, Exception? ex) FileName
+    {
+        get
+        {
+            if (fileName == default)
+            {
+                if (FileFullPath != default && FileFullPath.v is not null)
+                {
+                    return fileName = (Path.GetFileName(FileFullPath.v), null);
+                }
+                else
+                {
+                    return fileName = (null, new InvalidOperationException("Unable to query FileName; This operation requires FileFullPath."));
+                }
+            }
+            else
+            {
+                return fileName;
+            }
+        }
+    }
 
     public (bool? v, Exception? ex) IsDirectory
     {
