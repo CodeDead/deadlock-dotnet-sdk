@@ -38,20 +38,16 @@ public class SafeFileHandleEx : SafeHandleEx
     /// <param name="sysHandleEx"></param>
     internal SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(sysHandleEx: sysHandleEx)
     {
-        if (IsFileHandle != default && IsFileHandle.v == true)
+        if (IsFileHandle.v is true)
         {
             try
             {
                 if (ProcessIsProtected.v == true)
                 {
-                    if (ProcessIsProtected != default)
-                    {
-                        ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
-                    }
                     if (ProcessName.v is "smss")
-                    {
                         ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
-                    }
+                    else
+                        ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
                 }
             }
             catch (Exception e)

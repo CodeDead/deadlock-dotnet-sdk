@@ -56,7 +56,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         get
         {
-            if (handleObjectType == default && ProcessIsProtected != default)
+            if (handleObjectType == default)
             {
                 if (ProcessIsProtected.v == false)
                 {
@@ -117,7 +117,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         get
         {
-            if (processMainModulePath == default && ProcessIsProtected != default)
+            if (processMainModulePath == default)
             {
                 if (ProcessIsProtected.v == false)
                 {
@@ -221,7 +221,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         try
         {
-            return (HandleObjectType != default && HandleObjectType.v == "File", null);
+            return (HandleObjectType.v == "File", null);
         }
         catch (Exception ex)
         {
