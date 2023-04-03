@@ -72,6 +72,9 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (fileHandleType == default)
             {
+                if (IsFileHandle.v is not true)
+                    return (null, new InvalidOperationException("Unable to query File handle type; This operation is only valid on File handles."));
+
                 try
                 {
                     return fileHandleType = ((TypeOfFileHandle?)GetFileType(handle), null);
