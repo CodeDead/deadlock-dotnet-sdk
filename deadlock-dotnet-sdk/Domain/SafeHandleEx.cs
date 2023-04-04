@@ -58,18 +58,17 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             if (handleObjectType == default)
             {
-                if (ProcessIsProtected.v == false)
+                switch (ProcessIsProtected.v)
                 {
-                    try { return handleObjectType = (SysHandleEx.GetHandleObjectType(), null); }
-                    catch (Exception e) { return (null, e); }
-                }
-                else if (ProcessIsProtected.v == true)
-                {
-                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; The process is protected."));
-                }
-                else
-                {
-                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex));
+                    case false:
+                        {
+                            try { return handleObjectType = (SysHandleEx.GetHandleObjectType(), null); }
+                            catch (Exception e) { return (null, e); }
+                        }
+                    case true:
+                        return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; The process is protected."));
+                    default:
+                        return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex));
                 }
             }
             else
