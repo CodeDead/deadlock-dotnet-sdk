@@ -94,7 +94,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 using SafeProcessHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, ProcessId);
                 NTSTATUS status = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)ProcessProtectionInformation, &protection, 1, ref retLength);
 
-                return status.Code == PInvoke.NTSTATUS.Code.STATUS_SUCCESS
+                return status.Code == Code.STATUS_SUCCESS
                     ? (processIsProtected = (protection.Type > 0, null))
                     : (processIsProtected = (null, new NTStatusException(status)));
             }
