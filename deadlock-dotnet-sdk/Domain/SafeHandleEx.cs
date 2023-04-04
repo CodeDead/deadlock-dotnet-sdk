@@ -145,27 +145,27 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 switch (ProcessId)
                 {
                     case 0:
-                        processName = ("System Idle Process", null);
-                        break;
+                        return processName = ("System Idle Process", null);
                     case 4:
-                        processName = ("System", null);
-                        break;
+                        return processName = ("System", null);
                     default:
                         try
                         {
                             var proc = Process.GetProcessById((int)ProcessId);
                             if (proc.HasExited)
-                                processName = (null, new InvalidOperationException("Process has exited, so the requested information is not available."));
-                            else processName = (Process.GetProcessById((int)ProcessId).ProcessName, null);
+                                return processName = (null, new InvalidOperationException("Process has exited, so the requested information is not available."));
+                            else return processName = (Process.GetProcessById((int)ProcessId).ProcessName, null);
                         }
                         catch (Exception ex)
                         {
-                            processName = (null, ex);
+                            return processName = (null, ex);
                         }
-                        break;
                 }
             }
-            return processName;
+            else
+            {
+                return processName;
+            }
         }
     }
 
