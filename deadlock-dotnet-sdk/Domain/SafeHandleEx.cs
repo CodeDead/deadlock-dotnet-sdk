@@ -293,8 +293,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         if (processId == (uint)Environment.ProcessId)
             return (Environment.CommandLine, null);
-
-        Exception? exceptionData = default;
         try
         {
             if (!IsDebugModeEnabled())
@@ -302,7 +300,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
         catch (Exception ex)
         {
-            exceptionData = ex; // What to do with this exception?
+            Debug.Print(ex.ToString());
         }
 
         using SafeProcessHandle hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, processId);
