@@ -2,7 +2,8 @@ using System.ComponentModel;
 
 namespace deadlock_dotnet_sdk.Domain
 {
-    //TODO: Add RefreshList(): Check if a handle is closed. If true, remove if from Lockers. SafeHandle.IsClosed may be unreliable depending on the runtime's internal logic. It might only work as intended if the handle is managed by the current runtime.
+    //TODO: Add RefreshList(). This should clear Lockers and call FindLockingHandles again.
+    //TODO: If a handle is closed or invalid, remove if from Lockers. SafeHandle.IsClosed is unreliable—it only works on handles managed by the current process.
     //https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/SafeHandle.cs
     public class FileLockerEx
     {
