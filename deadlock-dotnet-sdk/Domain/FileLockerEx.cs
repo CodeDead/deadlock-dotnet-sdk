@@ -79,9 +79,12 @@ namespace deadlock_dotnet_sdk.Domain
         [Flags]
         public enum HandlesFilter
         {
+            /// <summary>'File' objects have a sub-type (Directory, File, "File or Directory", Network, Other, Pipe)</summary>
             FilesOnly = 0,
             IncludeNonFiles = 1,
-            IncludeFailedTypeQuery = 2
+            IncludeFailedTypeQuery = 1 << 1,
+            /// <summary>4 + IncludeFailedTypeQuery</summary>
+            IncludeProtectedProcesses = (1 << 2) + IncludeFailedTypeQuery
         }
 
         public void Refresh()
