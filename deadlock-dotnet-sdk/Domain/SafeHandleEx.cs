@@ -28,6 +28,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     private (string? v, Exception? ex) processMainModulePath;
     private (string? v, Exception? ex) processName;
     private (bool? v, Exception? ex) processIsProtected;
+    private (PS_PROTECTION? v, Exception? ex) processProtection;
 
     public SafeHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
     { }
@@ -86,16 +87,14 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             if (processIsProtected == default)
             {
-                const uint ProcessProtectionInformation = 61; // Retrieves a BYTE value indicating the type of protected process and the protected process signer.
-                PS_PROTECTION protection = default;
-                uint retLength = 0;
-
-                using SafeProcessHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, ProcessId);
-                NTSTATUS status = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)ProcessProtectionInformation, &protection, 1, ref retLength);
-
-                return status.Code == Code.STATUS_SUCCESS
-                    ? (processIsProtected = (protection.Type > 0, null))
-                    : (processIsProtected = (null, new NTStatusException(status)));
+                if (ProcessProtection.v is not null)
+                {
+                    return processIsProtected = (ProcessProtection.v.Value.Type > PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone, null);
+                }
+                else
+                {
+                    return processIsProtected = (null, new Exception("ProcessProtection query failed.", ProcessProtection.ex));
+                }
             }
             else
             {
@@ -103,7 +102,31 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             }
         }
     }
-    public (string? v, Exception? ex) ProcessCommandLine => processCommandLine == default ? (processCommandLine = GetProcessCommandLine(ProcessId)) : processCommandLine;
+    public unsafe (PS_PROTECTION? v, Exception? ex) ProcessProtection
+    {
+        get
+        {
+            if (processProtection == default)
+            {
+                const uint ProcessProtectionInformation = 61; // Retrieves a BYTE value indicating the type of protected process and the protected process signer.
+                PS_PROTECTION protection = default;
+                uint retLength = 0;
+
+                using SafeProcessHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, ProcessId);
+                NTSTATUS status = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)ProcessProtectionInformation, &protection, 1, ref retLength);
+
+                if (status.Code is not Code.STATUS_SUCCESS)
+                    return (null, new NTStatusException(status));
+                else
+                    return processProtection = (protection, null);
+            }
+            else
+            {
+                return processProtection;
+            }
+        }
+    }
+    public (string? v, Exception? ex) ProcessCommandLine => processCommandLine == default ? (processCommandLine = TryGetProcessCommandLine(ProcessId)) : processCommandLine;
     /// <summary>
     /// The full file path of the handle-owning process's main module (the executable file) or an exception if the Get operation failed.
     /// </summary>
