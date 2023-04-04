@@ -80,28 +80,11 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     }
 
     //public bool ProcessIs64Bit { get; } // unused, for now
-    //TODO: change from nullable bool to nullable enum. Light protection allows querying the command line while Full protection does not.
-    public unsafe (bool? v, Exception? ex) ProcessIsProtected
-    {
-        get
-        {
-            if (processIsProtected == default)
-            {
-                if (ProcessProtection.v is not null)
-                {
-                    return processIsProtected = (ProcessProtection.v.Value.Type > PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone, null);
-                }
-                else
-                {
-                    return processIsProtected = (null, new Exception("ProcessProtection query failed.", ProcessProtection.ex));
-                }
-            }
-            else
-            {
-                return processIsProtected;
-            }
-        }
-    }
+    public unsafe (bool? v, Exception? ex) ProcessIsProtected => processIsProtected == default
+                ? ProcessProtection.v is not null
+                    ? (processIsProtected = (ProcessProtection.v.Value.Type > PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone, null))
+                    : (processIsProtected = (null, new Exception("ProcessProtection query failed.", ProcessProtection.ex)))
+                : processIsProtected;
     public unsafe (PS_PROTECTION? v, Exception? ex) ProcessProtection
     {
         get
