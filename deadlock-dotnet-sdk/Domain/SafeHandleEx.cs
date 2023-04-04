@@ -320,11 +320,39 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 
+    /// TODO: clean up Exception. Implement custom exceptions?
     /// <summary>Try to get a process's command line from its PEB</summary>
     /// <param name="hProcess">A handle to the target process with the rights PROCESS_QUERY_LIMITED_INFORMATION and PROCESS_VM_READ</param>
-    /// <exception cref="NotImplementedException">Reading a 64-bit process's PEB from a 32-bit process (under WOW64) is not yet implemented.</exception>
-    /// <exception cref="Win32Exception">Failed to read the process's PEB in memory. While trying to read the PEB, the operation crossed into an area of the process that is inaccessible.</exception>
-    /// <exception cref="Exception">NtQueryInformationProcess failed to query the process's 'PROCESS_BASIC_INFORMATION'</exception>
+    /// <exception cref="ArgumentException">The provided process handle is invalid.</exception>
+    /// <exception cref="Exception">
+    ///     IsWow64Process failed to determine if target process is running under WOW. See InnerException.
+    ///     -OR-
+    ///     NtQueryInformationProcess failed to get a process's command line. See InnerException.
+    ///     -OR-
+    ///     NtWow64QueryInformationProcess64 failed to get the memory address of another process's PEB. See InnerException.
+    ///     -OR-
+    ///     NtWow64ReadVirtualMemory64 failed to copy another process's PEB to this process. See InnerException.
+    ///     -OR-
+    ///     NtWow64ReadVirtualMemory64 failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process. See InnerException.
+    ///     -OR-
+    ///     NtWow64ReadVirtualMemory64 failed to copy another process's command line character string to this process. See InnerException.
+    ///     -OR-
+    ///     NtQueryInformationProcess failed to get the memory address of another process's PEB. See InnerException.
+    ///     -OR-
+    ///     ReadProcessMemory failed to copy another process's PEB to this process. See InnerException.
+    ///     -OR-
+    ///     ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process. See InnerException.
+    ///     -OR-
+    ///     ReadProcessMemory failed to copy another process's command line character string to this process. See InnerException.
+    ///     -OR-
+    ///     NtQueryInformationProcess failed to get the memory address of another process's PEB. See InnerException.
+    ///     -OR-
+    ///     ReadProcessMemory failed to copy another process's PEB to this process. See InnerException.
+    ///     -OR-
+    ///     ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process. See InnerException.
+    ///     -OR-
+    ///     ReadProcessMemory failed to copy another process's command line character string to this process. See InnerException.
+    ///     </exception>
     /// <exception cref="OutOfMemoryException">ReAllocHGlobal received a null pointer, but didn't check the error code. This is not a real OutOfMemoryException</exception>
     private unsafe static string GetProcessCommandLine(SafeProcessHandle hProcess)
     {
@@ -332,7 +360,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             throw new ArgumentException("The provided process handle is invalid.", paramName: nameof(hProcess));
 
         if (!IsWow64Process(hProcess, out BOOL targetIs32BitProcess))
-            throw new Win32Exception("Failed to determine target process is running under WOW: {0}");
+            throw new Exception("Failed to determine target process is running under WOW. See InnerException.", new Win32Exception());
 
         bool weAre32BitAndTheyAre64Bit = !Environment.Is64BitProcess && !targetIs32BitProcess;
         bool weAre64BitAndTheyAre32Bit = Environment.Is64BitProcess && targetIs32BitProcess;
@@ -368,14 +396,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                     // the native call to LocalReAlloc (via Marshal.ReAllocHGlobal) sometimes returns a null pointer. This is a Legacy function. Why does .NET not use malloc/realloc?
                     //pString->Buffer = new((char*)Marshal.ReAllocHGlobal((IntPtr)pString->Buffer.Value, (IntPtr)bufferLength));
                     safeBuffer.Reallocate(numBytes: returnLength);
-
-                    status = NtQueryInformationProcess(
-                        hProcess,
-                        (PROCESSINFOCLASS)ProcessCommandLineInformation,
-                        (void*)safeBuffer.DangerousGetHandle(),
-                        bufferLength,
-                        ref returnLength
-                        );
                 }
                 catch (OutOfMemoryException) // ReAllocHGlobal received a null pointer, but didn't check the error code
                 {
@@ -385,12 +405,20 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                     //var winerr = Marshal.GetLastWin32Error();
                     throw;
                 }
+
+                status = NtQueryInformationProcess(
+                    hProcess,
+                    (PROCESSINFOCLASS)ProcessCommandLineInformation,
+                    (void*)safeBuffer.DangerousGetHandle(),
+                    bufferLength,
+                    ref returnLength
+                    );
             }
 
             if (status.IsSuccessful)
                 return safeBuffer.Read<UNICODE_STRING>(0).ToStringZ() ?? string.Empty;
             else
-                throw new NTStatusException(status);
+                throw new Exception("NtQueryInformationProcess failed to get a process's command line. See InnerException.", new NTStatusException(status));
         }
         else /** Read CommandLine from PEB's Process Parameters */
         {
@@ -425,16 +453,16 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 }
                 else
                 {
-                    throw new Exception("NtWow64QueryInformationProcess64 failed to get the memory address of another process's PEB.", new NTStatusException(status));
+                    throw new Exception("NtWow64QueryInformationProcess64 failed to get the memory address of another process's PEB. See InnerException.", new NTStatusException(status));
                 }
 
                 // copy PEB
                 if (!(status = NtWow64ReadVirtualMemory64(hProcess, (UIntPtr64)basicInfo.PebBaseAddress, &peb, (ulong)Marshal.SizeOf(peb), &bytesRead)).IsSuccessful)
-                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's PEB to this process.", new NTStatusException(status));
+                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's PEB to this process. See InnerException.", new NTStatusException(status));
 
                 // Copy RTL_USER_PROCESS_PARAMETERS.
                 if (!(status = NtWow64ReadVirtualMemory64(hProcess, (UIntPtr64)peb.ProcessParameters, &parameters, (ulong)Marshal.SizeOf(parameters), &bytesRead)).IsSuccessful)
-                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process.", new NTStatusException(status));
+                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process. See InnerException.", new NTStatusException(status));
 
                 using UNICODE_STRING cmdLine = new()
                 {
@@ -444,7 +472,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 };
 
                 if (!(status = NtWow64ReadVirtualMemory64(hProcess, (UIntPtr64)parameters.CommandLine.Buffer, cmdLine.Buffer.Value, cmdLine.MaximumLength, &bytesRead)).IsSuccessful)
-                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's command line character string to this process.", new NTStatusException(status));
+                    throw new Exception("NtWow64ReadVirtualMemory64 failed to copy another process's command line character string to this process. See InnerException.", new NTStatusException(status));
 
                 return cmdLine.ToStringLength();
             }
@@ -483,16 +511,16 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 }
                 else
                 {
-                    throw new Exception("NtQueryInformationProcess failed to get the memory address of another process's PEB.", new NTStatusException(status));
+                    throw new Exception("NtQueryInformationProcess failed to get the memory address of another process's PEB. See InnerException.", new NTStatusException(status));
                 }
 
                 // copy PEB
                 if (!ReadProcessMemory(hProcess, (void*)basicInfo.PebBaseAddress, &peb, (nuint)Marshal.SizeOf(peb), (nuint*)&bytesRead))
-                    throw new Exception("ReadProcessMemory failed to copy another process's PEB to this process.", new NTStatusException(status));
+                    throw new Exception("ReadProcessMemory failed to copy another process's PEB to this process. See InnerException.", new NTStatusException(status));
 
                 // Copy RTL_USER_PROCESS_PARAMETERS.
                 if (!ReadProcessMemory(hProcess, (void*)peb.ProcessParameters, &parameters, (nuint)Marshal.SizeOf(parameters), (nuint*)&bytesRead))
-                    throw new Exception("ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process.", new NTStatusException(status));
+                    throw new Exception("ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process. See InnerException.", new NTStatusException(status));
 
                 using UNICODE_STRING cmdLine = new()
                 {
@@ -502,7 +530,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 };
 
                 if (!ReadProcessMemory(hProcess, (void*)parameters.CommandLine.Buffer, cmdLine.Buffer.Value, cmdLine.MaximumLength, (nuint*)&bytesRead))
-                    throw new Exception("ReadProcessMemory failed to copy another process's command line character string to this process.", new NTStatusException(status));
+                    throw new Exception("ReadProcessMemory failed to copy another process's command line character string to this process. See InnerException.", new NTStatusException(status));
 
                 return cmdLine.ToStringLength();
             }
@@ -540,16 +568,16 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 }
                 else
                 {
-                    throw new Exception("NtQueryInformationProcess failed to get the memory address of another process's PEB.", new NTStatusException(status));
+                    throw new Exception("NtQueryInformationProcess failed to get the memory address of another process's PEB. See InnerException.", new NTStatusException(status));
                 }
 
                 // copy PEB
                 if (!ReadProcessMemory(hProcess, basicInfo.PebBaseAddress, &peb, (nuint)Marshal.SizeOf(peb), (nuint*)&bytesRead))
-                    throw new Exception("ReadProcessMemory failed to copy another process's PEB to this process.", new NTStatusException(status));
+                    throw new Exception("ReadProcessMemory failed to copy another process's PEB to this process. See InnerException.", new NTStatusException(status));
 
                 // Copy RTL_USER_PROCESS_PARAMETERS.
                 if (!ReadProcessMemory(hProcess, peb.ProcessParameters, &parameters, (nuint)Marshal.SizeOf(parameters), (nuint*)&bytesRead))
-                    throw new Exception("ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process.", new NTStatusException(status));
+                    throw new Exception("ReadProcessMemory failed to copy another process's RTL_USER_PROCESS_PARAMETERS to this process. See InnerException.", new NTStatusException(status));
 
                 using UNICODE_STRING cmdLine = new()
                 {
@@ -559,7 +587,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 };
 
                 if (!ReadProcessMemory(hProcess, (void*)parameters.CommandLine.Buffer, cmdLine.Buffer.Value, cmdLine.MaximumLength, (nuint*)&bytesRead))
-                    throw new Exception("ReadProcessMemory failed to copy another process's command line character string to this process.", new NTStatusException(status));
+                    throw new Exception("ReadProcessMemory failed to copy another process's command line character string to this process. See InnerException.", new NTStatusException(status));
 
                 return cmdLine.ToStringLength();
             }
@@ -569,7 +597,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// Release all resources owned by the current process that are associated with this handle.
     /// </summary>
-    /// <returns>Returns a bool indicating both <see cref="IsClosed"/> and <see cref="IsInvalid"/> are true</returns>
+    /// <returns>Returns a bool indicating IsClosed is true</returns>
     protected override bool ReleaseHandle()
     {
         Close();
