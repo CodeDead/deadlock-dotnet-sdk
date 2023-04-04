@@ -6,6 +6,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Threading;
 using static Windows.Win32.PInvoke;
+using static Windows.Win32.PS_PROTECTION.PS_PROTECTED_TYPE;
 using ACCESS_MASK = PInvoke.Kernel32.ACCESS_MASK;
 using Code = PInvoke.NTSTATUS.Code;
 using NTSTATUS = Windows.Win32.Foundation.NTSTATUS;
@@ -82,7 +83,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     //public bool ProcessIs64Bit { get; } // unused, for now
     public unsafe (bool? v, Exception? ex) ProcessIsProtected => processIsProtected == default
                 ? ProcessProtection.v is not null
-                    ? (processIsProtected = (ProcessProtection.v.Value.Type > PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone, null))
+                    ? (processIsProtected = (ProcessProtection.v.Value.Type > PsProtectedTypeNone, null))
                     : (processIsProtected = (null, new Exception("ProcessProtection query failed.", ProcessProtection.ex)))
                 : processIsProtected;
     public unsafe (PS_PROTECTION? v, Exception? ex) ProcessProtection
@@ -109,7 +110,25 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             }
         }
     }
-    public (string? v, Exception? ex) ProcessCommandLine => processCommandLine == default ? (processCommandLine = TryGetProcessCommandLine(ProcessId)) : processCommandLine;
+    public (string? v, Exception? ex) ProcessCommandLine
+    {
+        get
+        {
+            if (processCommandLine == default)
+            {
+                return ProcessProtection.v?.Type switch
+                {
+                    PsProtectedTypeNone or PsProtectedTypeProtectedLight => processCommandLine = TryGetProcessCommandLine(ProcessId),
+                    not PsProtectedTypeProtected => processCommandLine = (null, new Exception("ProcessCommandLine cannot be queried or copied; the process's Protection level prevents access to the process's command line.")),
+                    _ => processCommandLine = (null, new Exception("ProcessCommandLine cannot be queried or copied"))
+                };
+            }
+            else
+            {
+                return processCommandLine;
+            }
+        }
+    }
     /// <summary>
     /// The full file path of the handle-owning process's main module (the executable file) or an exception if the Get operation failed.
     /// </summary>
