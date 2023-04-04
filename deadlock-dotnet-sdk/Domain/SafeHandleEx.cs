@@ -113,28 +113,14 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// ex: If the query failed, the error encountered when attempting to query the full file path of the process's main module.
     /// </value>
     /// <remarks>If IsProtected.v is true or null, returns InvalidOperationException. The queryable details of protected processes (System, Registry, etc.) are limited..</remarks>
-    public (string? v, Exception? ex) ProcessMainModulePath
-    {
-        get
-        {
-            if (processMainModulePath == default)
-            {
-                if (ProcessIsProtected.v == false)
+    public (string? v, Exception? ex) ProcessMainModulePath => processMainModulePath == default
+                ? ProcessIsProtected.v switch
                 {
-                    return processMainModulePath = TryGetFullProcessImageName();
+                    false => processMainModulePath = TryGetFullProcessImageName(),
+                    true => processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; The process is protected.")),
+                    _ => processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex)),
                 }
-                else if (ProcessIsProtected.v == true)
-                {
-                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; The process is protected."));
-                }
-                else // assume IsProcessProtected returned an Exception
-                {
-                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex));
-                }
-            }
-            return processMainModulePath;
-        }
-    }
+                : processMainModulePath;
 
     public (string? v, Exception? ex) ProcessName
     {
