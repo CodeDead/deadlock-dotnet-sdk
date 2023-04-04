@@ -289,7 +289,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 
-    private static (string? v, Exception? ex) GetProcessCommandLine(uint processId)
+    private static (string? v, Exception? ex) TryGetProcessCommandLine(uint processId)
     {
         if (processId == (uint)Environment.ProcessId)
             return (Environment.CommandLine, null);
