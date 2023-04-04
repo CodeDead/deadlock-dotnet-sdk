@@ -49,7 +49,7 @@ namespace deadlock_dotnet_sdk.Domain
         /// <param name="rethrowExceptions">Assign True to rethrow exceptions</param>
         /// <param name="warningException">When not null, DeadLock failed to grant debug permissions to the current thread failed. See inner Exceptions for more information.</param>
         /// <exception cref="UnauthorizedAccessException">DeadLock was denied debug permissions to access system, service, and admin processes. By default, Administrators are allowed this permission. Try running as Administrator.</exception>
-        /// <remarks>If any errors occur in the context of an individual handle, </remarks>
+        /// <remarks>This constructor enables Debugger permissions for the current process. If the process is not running as admin, Debugger permissions may be denied and some functionality won't work as intended.</remarks>
         public FileLockerEx(string path, HandlesFilter filter, bool rethrowExceptions, out WarningException? warningException)
         {
             warningException = null;
