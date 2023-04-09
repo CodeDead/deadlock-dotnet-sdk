@@ -126,8 +126,12 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                     buffer.Reallocate(bufferLength);
                 }
 
+                OBJECT_NAME_INFORMATION oni = buffer.Read<OBJECT_NAME_INFORMATION>(0);
+                if (oni.Name.Buffer.Value == null)
+                    return (null, new NullReferenceException("Bad data was copied to the buffer. The string pointer is null."));
+
                 return status.IsSuccessful
-                    ? objectName = (buffer.Read<OBJECT_NAME_INFORMATION>(0).NameAsString, null)
+                    ? objectName = (oni.NameAsString, null)
                     : objectName = (null, new NTStatusException(status));
             }
             else
