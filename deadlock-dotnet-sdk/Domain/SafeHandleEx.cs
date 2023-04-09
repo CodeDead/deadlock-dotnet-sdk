@@ -137,14 +137,45 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// ex: If the query failed, the error encountered when attempting to query the full file path of the process's main module.
     /// </value>
     /// <remarks>If IsProtected.v is true or null, returns InvalidOperationException. The queryable details of protected processes (System, Registry, etc.) are limited..</remarks>
-    public (string? v, Exception? ex) ProcessMainModulePath => processMainModulePath == default
-                ? ProcessIsProtected.v switch
+    public (string? v, Exception? ex) ProcessMainModulePath
+    {
+        get
+        {
+            if (processMainModulePath == default)
+            {
+                if (ProcessProtection.v is not null)
                 {
-                    false => processMainModulePath = TryGetFullProcessImageName(),
-                    true => processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; The process is protected.")),
-                    _ => processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex)),
+                    if (ProcessProtection.v.Value.Type is PsProtectedTypeNone or PsProtectedTypeProtectedLight)
+                    {
+                        try
+                        {
+                            return processMainModulePath = (GetFullProcessImageName(ProcessId), null);
+                        }
+                        catch (Win32Exception ex) when (ex.ErrorCode == 31)
+                        {
+                            return processMainModulePath = (null, new InvalidOperationException("Process has exited, so the requested information is not available.", ex));
+                        }
+                        catch (Exception ex)
+                        {
+                            return processMainModulePath = (null, ex);
+                        }
+                    }
+                    else
+                    {
+                        return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; The process is protected."));
+                    }
                 }
-                : processMainModulePath;
+                else
+                {
+                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Unable to query the process's protection:" + Environment.NewLine + ProcessProtection.ex));
+                }
+            }
+            else
+            {
+                return processMainModulePath;
+            }
+        }
+    }
 
     public (string? v, Exception? ex) ProcessName
     {
@@ -220,22 +251,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             ExceptionLog.Add(ex);
             return false;
-        }
-    }
-
-    private (string? v, Exception? ex) TryGetFullProcessImageName()
-    {
-        try
-        {
-            return (GetFullProcessImageName(ProcessId), null);
-        }
-        catch (Win32Exception ex) when (ex.ErrorCode == 31)
-        {
-            return (null, new InvalidOperationException("Process has exited, so the requested information is not available.", ex));
-        }
-        catch (Exception ex)
-        {
-            return (null, ex);
         }
     }
 
