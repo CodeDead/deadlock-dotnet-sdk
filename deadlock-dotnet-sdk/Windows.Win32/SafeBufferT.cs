@@ -4,7 +4,7 @@ namespace Windows.Win32;
 /// <summary>
 /// https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/SafeBuffer.cs
 /// </summary>
-/// <typeparam name="T"></typeparam>
+/// <typeparam name="T">The first or top-most object type in the buffer.</typeparam>
 public class SafeBuffer<T> : SafeBuffer where T : unmanaged
 {
     public SafeBuffer(nuint numBytes) : base(true)
