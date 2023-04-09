@@ -25,7 +25,8 @@ namespace deadlock_dotnet_sdk.Domain;
 public class SafeFileHandleEx : SafeHandleEx
 {
     private (bool? v, Exception? ex) isFileHandle;
-    private (TypeOfFileHandle? v, Exception? ex) fileHandleType;
+    private (FileType? v, Exception? ex) fileHandleType;
+    private (string? v, Exception? ex) fileNameInfo;
     private (string? v, Exception? ex) fileFullPath;
     private (string? v, Exception? ex) fileName;
     private (bool? v, Exception? ex) isDirectory;
@@ -61,8 +62,13 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    public (bool? v, Exception? ex) IsFileHandle => isFileHandle == default ? (isFileHandle = GetIsFileHandle()) : isFileHandle;
-    public (TypeOfFileHandle? v, Exception? ex) FileHandleType
+    public (bool? v, Exception? ex) IsFileHandle => isFileHandle == default
+                ? HandleObjectType.v is "File"
+                    ? (isFileHandle = (true, null))
+                    : (isFileHandle = (null, new Exception("Failed to determine if this handle's object is a file/directory; Failed to query the object's type.", HandleObjectType.ex)))
+                : isFileHandle;
+
+    public (FileType? v, Exception? ex) FileHandleType
     {
         get
         {
@@ -71,14 +77,11 @@ public class SafeFileHandleEx : SafeHandleEx
                 if (IsFileHandle.v is not true)
                     return (null, new InvalidOperationException("Unable to query File handle type; This operation is only valid on File handles."));
 
-                try
-                {
-                    return fileHandleType = ((TypeOfFileHandle?)GetFileType(handle), null);
-                }
-                catch (Exception ex)
-                {
-                    return (null, ex);
-                }
+                FileType type = (FileType)GetFileType(handle);
+                var err = new Win32Exception();
+                return err.ErrorCode is 0 /* success */
+                    ? fileHandleType = (type, null)
+                    : fileHandleType = (null, err);
             }
             else
             {
@@ -87,15 +90,89 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
+    public unsafe (string? v, Exception? ex) FileNameInfo
+    {
+        get
+        {
+            if (fileNameInfo == default)
+            {
+                if (FileHandleType.v is not FileType.Disk)
+                    return (null, new InvalidOperationException("FileNameInfo can only be queried for disk-type file handles."));
+                //if (ProcessProtection.ex is not null)
+                //if (ProcessProtection.v?.Value.Type )
+
+                /* Get fni.FileNameLength */
+                FILE_NAME_INFO fni = default;
+                int fniSize = Marshal.SizeOf(fni);
+                int bufferLength = default;
+
+                using CancellationTokenSource cancellationTokenSource = new(50);
+                Task<FILE_NAME_INFO> taskGetInfo = new(() =>
+                {
+                    FILE_NAME_INFO tmp = default;
+                    _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &tmp, (uint)Marshal.SizeOf(fni));
+                    return tmp;
+                }, cancellationTokenSource.Token);
+
+                const int taskTimedOut = -1;
+                try
+                {
+                    if (Task.WaitAny(new Task[] { taskGetInfo }, 50) is taskTimedOut)
+                    {
+                        return (null, new TimeoutException("GetFileInformationByHandleEx did not respond within 50ms."));
+                    }
+                    else
+                    {
+                        bufferLength = (int)(taskGetInfo.Result.FileNameLength + fniSize);
+                    }
+                }
+                catch (AggregateException ae)
+                {
+                    foreach (Exception e in ae.InnerExceptions)
+                    {
+                        if (e is TaskCanceledException)
+                            return (null, e);
+                    }
+                }
+
+                /* Get FileNameInfo */
+                FILE_NAME_INFO* buffer = (FILE_NAME_INFO*)Marshal.AllocHGlobal(bufferLength);
+                using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
+
+                if (GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, buffer, (uint)bufferLength))
+                {
+                    UNICODE_STRING str = new()
+                    {
+                        Buffer = new PWSTR((char*)safeBuffer.DangerousGetHandle()),
+                        Length = (ushort)fni.FileNameLength,
+                        MaximumLength = (ushort)bufferLength
+                    };
+
+                    /* The string conversion copies the data to a new string in the managed heap before freeing safeBuffer and leaving this context. */
+                    return fileNameInfo = ((string)str, null);
+                }
+                else
+                {
+                    return (null, new Exception("Failed to query FileNameInfo; GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
+                }
+            }
+            else
+            {
+                return fileNameInfo;
+            }
+        }
+    }
+
     public (string? v, Exception? ex) FileFullPath => fileFullPath == default ? (fileFullPath = TryGetFinalPath()) : fileFullPath;
 
+    // TODO: leverage GetFileInformationByHandleEx
     public (string? v, Exception? ex) FileName
     {
         get
         {
             if (fileName == default)
             {
-                if (FileFullPath != default && FileFullPath.v is not null)
+                if (FileFullPath.v is not null)
                 {
                     return fileName = (Path.GetFileName(FileFullPath.v), null);
                 }
@@ -138,7 +215,7 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    public enum TypeOfFileHandle : uint
+    public enum FileType : uint
     {
         Unknown = FILE_TYPE.FILE_TYPE_UNKNOWN,
         Disk = FILE_TYPE.FILE_TYPE_DISK,

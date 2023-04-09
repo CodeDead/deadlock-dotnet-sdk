@@ -223,22 +223,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 
-    /// <summary>Invokes <see cref="GetHandleObjectType()"/> and checks if the result is "File".</summary>
-    /// <returns>True if the handle is for a file or directory.</returns>
-    /// <remarks>Based on source of C/C++ projects <see href="https://www.x86matthew.com/view_post?id=hijack_file_handle">Hijack File Handle</see> and <see href="https://github.com/adamkramer/handle_monitor">Handle Monitor</see></remarks>
-    /// <exception cref="Exception">Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. InnerException Message: </exception>
-    public (bool? v, Exception? ex) GetIsFileHandle()
-    {
-        try
-        {
-            return (HandleObjectType.v == "File", null);
-        }
-        catch (Exception ex)
-        {
-            return (null, new Exception($"Failed to determine if this handle's object is a file/directory. Error when calling NtQueryObject. InnerException Message: {ex.Message}", ex));
-        }
-    }
-
     private (string? v, Exception? ex) TryGetFullProcessImageName()
     {
         try
