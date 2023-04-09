@@ -100,7 +100,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 NTSTATUS status = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)ProcessProtectionInformation, &protection, 1, ref retLength);
 
                 if (status.Code is not Code.STATUS_SUCCESS)
-                    return (null, new NTStatusException(status));
+                    return processProtection = (null, new NTStatusException(status));
                 else
                     return processProtection = (protection, null);
             }
