@@ -261,6 +261,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <returns>The path to the executable image.</returns>
     /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
     /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
+    /// <exception cref="UnauthorizedAccessException">Failed to open process handle for processId; </exception>
     private unsafe static string GetFullProcessImageName(uint processId)
     {
         uint size = 260 + 1;
