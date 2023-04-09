@@ -217,11 +217,14 @@ public class SafeFileHandleEx : SafeHandleEx
 
     public enum FileType : uint
     {
+        /// <summary>Either the type of the specified file is unknown, or the function failed.</summary>
         Unknown = FILE_TYPE.FILE_TYPE_UNKNOWN,
+        /// <summary>The specified file is a disk file.</summary>
         Disk = FILE_TYPE.FILE_TYPE_DISK,
+        /// <summary>The specified file is a character file, typically an LPT device or a console.</summary>
         Char = FILE_TYPE.FILE_TYPE_CHAR,
+        /// <summary>The specified file is a socket, a named pipe, or an anonymous pipe.</summary>
         Pipe = FILE_TYPE.FILE_TYPE_PIPE,
-        Remote = FILE_TYPE.FILE_TYPE_REMOTE
     }
 
     /// <summary>
