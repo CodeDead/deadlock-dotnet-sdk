@@ -63,7 +63,7 @@ public class SafeFileHandleEx : SafeHandleEx
     }
 
     public (bool? v, Exception? ex) IsFileHandle => isFileHandle == default
-                ? HandleObjectType.v is "File"
+                ? HandleObjectType.v == "File"
                     ? (isFileHandle = (true, null))
                     : (isFileHandle = (null, new Exception("Failed to determine if this handle's object is a file/directory; Failed to query the object's type.", HandleObjectType.ex)))
                 : isFileHandle;
