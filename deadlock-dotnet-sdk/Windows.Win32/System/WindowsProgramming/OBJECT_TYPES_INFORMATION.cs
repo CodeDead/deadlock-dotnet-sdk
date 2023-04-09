@@ -19,7 +19,4 @@ struct OBJECT_TYPES_INFORMATION
                 return new ReadOnlySpan<OBJECT_TYPE_INFORMATION>(p, (int)NumberOfTypes).ToArray();
         }
     }
-
-    public static explicit operator uint(OBJECT_TYPES_INFORMATION v) => v.NumberOfTypes;
-
 }
