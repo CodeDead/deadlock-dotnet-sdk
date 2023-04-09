@@ -236,14 +236,16 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         try
         {
-            if (ProcessIsProtected.v is true)
-                throw new InvalidOperationException("Unable to query file/network path or pipe name; The process is protected.");
-            if (ProcessIsProtected.v is null)
-                throw new InvalidOperationException("Unable to query file/network path or pipe name; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex);
-            if (IsFileHandle.v is false)
-                throw new InvalidOperationException("Unable to query file/network path or pipe name; The handle object is not a File.");
+            if (ProcessProtection.v is null)
+                throw new InvalidOperationException("Unable to query disk/network path; Failed to query the process's protection:" + Environment.NewLine + ProcessProtection.ex);
+            if (ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
+                throw new InvalidOperationException("Unable to query disk/network path; The process is protected.");
             if (HandleObjectType.v is null)
-                throw new InvalidOperationException("Unable to query file/network path or pipe name; Unable to query handle object type." + Environment.NewLine + HandleObjectType.ex);
+                throw new InvalidOperationException("Unable to query disk/network path; Failed to query handle object type." + Environment.NewLine + HandleObjectType.ex);
+            if (IsFileHandle.v is false)
+                throw new InvalidOperationException("Unable to query disk/network path; The handle's object is not a File.");
+            if (FileHandleType.v is not FileType.Disk)
+                throw new InvalidOperationException("Unable to query disk/network path; The File object is not a Disk-type File.");
 
             uint bufLength = (uint)short.MaxValue;
             using PWSTR getLengthBuffer = new((char*)Marshal.AllocHGlobal(1));
