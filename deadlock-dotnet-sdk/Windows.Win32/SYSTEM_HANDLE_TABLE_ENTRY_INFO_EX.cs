@@ -56,6 +56,7 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
 
     /// <summary>Get the Type of the object as a string</summary>
     /// <returns>The Type of the object as a string.</returns>
+    /// <exception cref="NTStatusException">NtQueryObject failed. See InnerException.</exception>
     public unsafe string GetHandleObjectType()
     {
         NTSTATUS status;
