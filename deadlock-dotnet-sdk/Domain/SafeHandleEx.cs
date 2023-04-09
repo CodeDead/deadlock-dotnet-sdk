@@ -65,7 +65,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             {
                 if (ProcessProtection.v is null)
                 {
-                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Unable to query the process's protection:" + Environment.NewLine + ProcessProtection.ex, ProcessProtection.ex));
+                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Failed to query the process's protection:" + Environment.NewLine + ProcessProtection.ex, ProcessProtection.ex));
                 }
                 else if (ProcessProtection.v.Value.Type is PsProtectedTypeNone or PsProtectedTypeProtectedLight)
                 {
@@ -80,7 +80,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 }
                 else
                 {
-                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; The process is protected."));
+                    return handleObjectType = (null, new UnauthorizedAccessException("Unable to query the kernel object's Type; The process is protected."));
                 }
             }
             else
@@ -166,8 +166,8 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 return ProcessProtection.v?.Type switch
                 {
                     PsProtectedTypeNone or PsProtectedTypeProtectedLight => processCommandLine = TryGetProcessCommandLine(ProcessId),
-                    not PsProtectedTypeProtected => processCommandLine = (null, new Exception("ProcessCommandLine cannot be queried or copied; the process's Protection level prevents access to the process's command line.")),
-                    _ => processCommandLine = (null, new Exception("ProcessCommandLine cannot be queried or copied"))
+                    PsProtectedTypeProtected => processCommandLine = (null, new UnauthorizedAccessException("ProcessCommandLine cannot be queried or copied; the process's Protection level prevents access to the process's command line.")),
+                    _ => processCommandLine = (null, new InvalidOperationException("ProcessCommandLine cannot be queried or copied; Failed to query the process's protection."))
                 };
             }
             else
@@ -183,7 +183,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// v: If the query succeeded, the full file path of the process's main module, the executable file.<br/>
     /// ex: If the query failed, the error encountered when attempting to query the full file path of the process's main module.
     /// </value>
-    /// <remarks>If IsProtected.v is true or null, returns InvalidOperationException. The queryable details of protected processes (System, Registry, etc.) are limited..</remarks>
+    /// <remarks>If ProcessProtection.v is null, returns InvalidOperationException. If Protected, returns UnauthorizedAccessException. The queryable details of protected processes (System, Registry, etc.) are limited..</remarks>
     public (string? v, Exception? ex) ProcessMainModulePath
     {
         get
@@ -209,12 +209,12 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                     }
                     else
                     {
-                        return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; The process is protected."));
+                        return processMainModulePath = (null, new UnauthorizedAccessException("Unable to query ProcessMainModulePath; The process is protected."));
                     }
                 }
                 else
                 {
-                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Unable to query the process's protection:" + Environment.NewLine + ProcessProtection.ex));
+                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Failed to query the process's protection:" + Environment.NewLine + ProcessProtection.ex));
                 }
             }
             else

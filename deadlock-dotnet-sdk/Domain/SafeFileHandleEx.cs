@@ -43,12 +43,12 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             try
             {
-                if (ProcessIsProtected.v == true)
+                if (ProcessIsProtected.v is true)
                 {
                     if (ProcessName.v is "smss")
-                        ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
+                        ExceptionLog.Add(new UnauthorizedAccessException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
                     else
-                        ExceptionLog.Add(new InvalidOperationException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
+                        ExceptionLog.Add(new UnauthorizedAccessException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
                 }
             }
             catch (Exception e)
@@ -98,6 +98,7 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 if (FileHandleType.v is not FileType.Disk)
                     return (null, new InvalidOperationException("FileNameInfo can only be queried for disk-type file handles."));
+                //TODO: check if process protection inhibits function
                 //if (ProcessProtection.ex is not null)
                 //if (ProcessProtection.v?.Value.Type )
 
@@ -239,7 +240,7 @@ public class SafeFileHandleEx : SafeHandleEx
             if (ProcessProtection.v is null)
                 throw new InvalidOperationException("Unable to query disk/network path; Failed to query the process's protection:" + Environment.NewLine + ProcessProtection.ex);
             if (ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
-                throw new InvalidOperationException("Unable to query disk/network path; The process is protected.");
+                throw new UnauthorizedAccessException("Unable to query disk/network path; The process is protected.");
             if (HandleObjectType.v is null)
                 throw new InvalidOperationException("Unable to query disk/network path; Failed to query handle object type." + Environment.NewLine + HandleObjectType.ex);
             if (IsFileHandle.v is false)
