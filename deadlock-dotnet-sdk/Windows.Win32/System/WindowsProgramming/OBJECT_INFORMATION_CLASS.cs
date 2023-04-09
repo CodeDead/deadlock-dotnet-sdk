@@ -10,11 +10,11 @@ enum OBJECT_INFORMATION_CLASS
     /// A <see cref="PUBLIC_OBJECT_BASIC_INFORMATION">PUBLIC_OBJECT_BASIC_INFORMATION</see> structure is supplied.
     /// </summary>
     ObjectBasicInformation = 0,
-    /// <summary>Microsoft documents `1` as ObjectTypeInformation instead of ObjectNameInformation, despite it being `2` in winternl.h for Windows 10.0.22000.0</summary>
+    /// <summary>An <see cref="OBJECT_NAME_INFORMATION"/> structure is supplied.</summary>
     ObjectNameInformation = 1,
-    /// <summary>A <see cref="PUBLIC_OBJECT_TYPE_INFORMATION">PUBLIC_OBJECT_TYPE_INFORMATION</see> structure is supplied.</summary>
+    /// <summary>A <see cref="PUBLIC_OBJECT_TYPE_INFORMATION"/> structure is supplied.</summary>
     ObjectTypeInformation = 2,
-    /// <summary>3.50 and higher</summary>
+    /// <summary>3.50 and higher; A <see cref="OBJECT_TYPES_INFORMATION"/> structure is supplied.</summary>
     ObjectTypesInformation = 3,
     /// <summary>3.50 and higher</summary>
     ObjectHandleFlagInformation = 4,
