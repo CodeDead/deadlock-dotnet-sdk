@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using deadlock_dotnet_sdk.Domain;
 using HandlesFilter = deadlock_dotnet_sdk.Domain.FileLockerEx.HandlesFilter;
@@ -268,11 +268,7 @@ namespace deadlock_dotnet_sdk
         {
             FileLockerEx fileLocker = new();
 
-            await Task.Run(() =>
-            {
-                fileLocker = new(filePath,
-                    NativeMethods.FindLockingHandles(filePath, filter));
-            });
+            await Task.Run(() => fileLocker = new(filePath, filter, false, out _));
 
             return fileLocker;
         }
@@ -282,6 +278,7 @@ namespace deadlock_dotnet_sdk
         /// </summary>
         /// <param name="filePaths">The full or partial paths of files and/or directories </param>
         /// <returns>The List of <see cref="FileLockerEx"/> objects that contain the handles that are locking a file or directory</returns>
+        /// <remarks>To monitor for a WarningException–an exception signifying reduced functionality–add a trace listener via System.Diagnostics.Trace.Listeners.Add(TraceListener)</remarks>
         public static async Task<List<FileLockerEx>> FindLockingHandlesAsync(HandlesFilter filter = HandlesFilter.FilesOnly, params string[] filePaths)
         {
             List<FileLockerEx> fileLockers = new();
@@ -290,8 +287,9 @@ namespace deadlock_dotnet_sdk
             {
                 foreach (string filePath in filePaths)
                 {
-                    fileLockers.Add(new FileLockerEx(filePath,
-                        NativeMethods.FindLockingHandles(filePath, filter)));
+                    fileLockers.Add(new FileLockerEx(filePath, filter, false, out var warning));
+                    if (warning is not null)
+                        Trace.TraceWarning(warning.ToString());
                 }
             });
 
