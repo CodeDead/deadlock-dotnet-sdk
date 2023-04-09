@@ -5,6 +5,7 @@ using PInvoke;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Threading;
+using Windows.Win32.System.WindowsProgramming;
 using static Windows.Win32.PInvoke;
 using static Windows.Win32.PS_PROTECTION.PS_PROTECTED_TYPE;
 using ACCESS_MASK = PInvoke.Kernel32.ACCESS_MASK;
@@ -24,6 +25,7 @@ namespace deadlock_dotnet_sdk.Domain;
 /// </summary>
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
+    // TODO: override IsInvalid 
     private (string? v, Exception? ex) processCommandLine;
     private (string? v, Exception? ex) handleObjectType;
     private (string? v, Exception? ex) objectName;
@@ -61,17 +63,24 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             if (handleObjectType == default)
             {
-                switch (ProcessIsProtected.v)
+                if (ProcessProtection.v is null)
                 {
-                    case false:
-                        {
-                            try { return handleObjectType = (SysHandleEx.GetHandleObjectType(), null); }
-                            catch (Exception e) { return (null, e); }
-                        }
-                    case true:
-                        return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; The process is protected."));
-                    default:
-                        return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Unable to query the process's protection:" + Environment.NewLine + ProcessIsProtected.ex));
+                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Unable to query the process's protection:" + Environment.NewLine + ProcessProtection.ex, ProcessProtection.ex));
+                }
+                else if (ProcessProtection.v.Value.Type is PsProtectedTypeNone or PsProtectedTypeProtectedLight)
+                {
+                    try
+                    {
+                        return handleObjectType = (SysHandleEx.GetHandleObjectType(), null);
+                    }
+                    catch (Exception e)
+                    {
+                        return handleObjectType = (null, e);
+                    }
+                }
+                else
+                {
+                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; The process is protected."));
                 }
             }
             else
