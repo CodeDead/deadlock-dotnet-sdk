@@ -127,26 +127,61 @@ internal static class NativeMethods
     ///     A list of SafeFileHandleEx objects. When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
     /// </returns>
     /// TODO: optimize process inspection. Stuff like IsProcessProtected should only be queried once per process
-    internal static List<SafeFileHandleEx> FindLockingHandles(string query, HandlesFilter filter = HandlesFilter.FilesOnly)
+    internal static List<ProcessInfo> FindLockingHandles(string query, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
-        List<SafeFileHandleEx>? handles = new();
+        List<ProcessInfo> processes = Process
+            .GetProcesses()
+            .ToList()
+            .ConvertAll(p => new ProcessInfo(p));
+        var handles = GetSystemHandleInfoEx()
+            .ToArray()
+            .GroupBy(h => h.UniqueProcessId);
+        var sw = Stopwatch.StartNew();
 
-        foreach (var h in GetSystemHandleInfoEx())
+        var results = Parallel.ForEach(processes, p =>
         {
-            handles.Add(new SafeFileHandleEx(h));
-        }
+            var match = handles.FirstOrDefault(group => (int)group.Key == p.Process.Id);
+            if (match is not null)
+                p.Handles.AddRange(match.ToList().ConvertAll<SafeFileHandleEx>(h => new(h)).Where(h => keep(h)));
+            else
+                return;
+        });
 
-        handles.RemoveAll(item => Discard(h: item));
-        handles.Sort((a, b) => a.ProcessId.CompareTo(b.ProcessId));
+        processes.Sort((a, b) => a.Process.Id.CompareTo(b.Process.Id));
+        sw.Stop();
+        Console.WriteLine("FindLockingHandles time elapsed: " + sw.Elapsed);
 
-        return handles;
+        //return handles;
+        return processes;
 
-        bool Discard(SafeFileHandleEx h)
+        bool keep(SafeFileHandleEx h)
         {
             bool keep = false;
 
-            // Check filters in reverse order
-            if (filter.HasFlag(HandlesFilter.IncludeProtectedProcesses))
+            if (!string.IsNullOrEmpty(query))
+            {
+                // only keep if FullFilePath contains query (with normalized directory separators)
+                string normalizedQuery = normalize(query);
+                string normalizedFileNameInfo = h.FileNameInfo.v is not null ? normalize(h.FileNameInfo.v) : string.Empty;
+                string normalizedFileFullPath = h.FileFullPath.v is not null ? normalize(h.FileFullPath.v) : string.Empty;
+
+                /* If a handle is unrelated to the query, it doesn't matter. No other conditions matter at this point */
+                // If an object name is returned by the system and it is null or zero-length, is it impossible for it to be a File handle?
+                return (!string.IsNullOrEmpty(h.ObjectName.v) && h.ObjectName.v.Contains(normalizedQuery))
+                       || (normalizedFileNameInfo.Length is not 0 && normalizedFileNameInfo.Contains(normalizedQuery))
+                       || (normalizedFileFullPath.Length is not 0 && normalizedFileFullPath.Contains(normalizedQuery));
+
+                string normalize(string s) => s is not null ? s.ToLower().Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) : string.Empty;
+            }
+            if (filter is HandlesFilter.FilesOnly)
+            {
+                // only keep if handle object is 'File'
+                // note: File objects' sub-type can be Directory, File, "File or Directory", Network, Other, or Pipe.
+                return h.IsFileHandle.v is not true; // query failed or object is not a File
+            }
+
+            /* Check combined filters in reverse order */
+            if (!keep && filter.HasFlag(HandlesFilter.IncludeProtectedProcesses))
             {
                 // if a process is protected, do not discard the handle
                 keep = h.ProcessIsProtected.v is true;
@@ -160,19 +195,8 @@ internal static class NativeMethods
             {
                 keep = string.IsNullOrWhiteSpace(h.HandleObjectType.v);
             }
-            if (!keep && filter is HandlesFilter.FilesOnly)
-            {
-                // only keep if handle object is 'File'
-                // note: File objects' sub-type can be Directory, File, "File or Directory", Network, Other, or Pipe.
-                keep = h.IsFileHandle.v is true;
-            }
-            if (!string.IsNullOrWhiteSpace(query))
-            {
-                // only keep if FullFilePath contains query (with normalized directory separators)
-                keep = h.FileFullPath.v?.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Contains(query.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)) is true;
-            }
 
-            return !keep;
+            return keep;
         }
     }
 

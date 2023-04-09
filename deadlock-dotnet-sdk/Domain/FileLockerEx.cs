@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace deadlock_dotnet_sdk.Domain
 {
@@ -9,14 +9,14 @@ namespace deadlock_dotnet_sdk.Domain
     {
         #region Properties
 
-        /// <summary>
-        /// Get or set the path of the file that is locked
-        /// </summary>
+        /// <summary>The path of the file that is locked</summary>
         public string Path { get; }
         public HandlesFilter Filter { get; }
 
+        // TODO: order by Process ID and then by handle value. Later todo: allow user-specified sorting rule (e.g. by column/property)
         /// <summary>Get or set the List of handles that are locking the file</summary>
-        public List<SafeFileHandleEx> Lockers { get; set; }
+        public List<SafeFileHandleEx> Lockers => Processes.SelectMany(pi => pi.Handles).Cast<SafeFileHandleEx>().OrderBy(h => h.ProcessId).ToList();
+        public List<ProcessInfo> Processes { get; private set; }
 
         #endregion Properties
 
@@ -26,18 +26,7 @@ namespace deadlock_dotnet_sdk.Domain
         public FileLockerEx()
         {
             Path = "";
-            Lockers = new List<SafeFileHandleEx>();
-        }
-
-        /// <summary>
-        /// Initialize a new FileLocker
-        /// </summary>
-        /// <param name="path">The path of the file or directory</param>
-        /// <param name="lockers">The List of handles that are locking the file</param>
-        public FileLockerEx(string path, List<SafeFileHandleEx> lockers)
-        {
-            Path = path;
-            Lockers = lockers;
+            Processes = new();
         }
 
         /// <summary>
@@ -70,7 +59,7 @@ namespace deadlock_dotnet_sdk.Domain
                     warningException = new("Failed to enable Debug Mode for greater access to processes which do not belong to the current user or admin.", uae);
             }
 
-            Lockers = NativeMethods.FindLockingHandles(path, filter);
+            Processes = NativeMethods.FindLockingHandles(path, filter);
         }
 
         /// <summary>
@@ -89,7 +78,7 @@ namespace deadlock_dotnet_sdk.Domain
 
         public void Refresh()
         {
-            Lockers = NativeMethods.FindLockingHandles(Path, Filter);
+            Processes = NativeMethods.FindLockingHandles(Path, Filter);
         }
     }
 }
