@@ -256,7 +256,7 @@ public class SafeFileHandleEx : SafeHandleEx
             // Try without duplicating. If it fails, try duplicating the handle.
             try
             {
-                const int timeout = 5000;
+                const int timeout = 50;
                 Task<uint> taskGetLength = new(() => GetFinalPathNameByHandle(handle, buffer, bufLength, FILE_NAME.FILE_NAME_NORMALIZED));
                 if (Task.WhenAny(taskGetLength, Task.Delay(timeout)).Result == taskGetLength)
                     length = taskGetLength.Result;
