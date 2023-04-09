@@ -90,6 +90,15 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 
+    /// <summary>
+    /// The name of the object e.g. "\\Device\\HarddiskVolume4\\Repos\\BinToss\\deadlock-dotnet-diagnostics\\deadlock-diagnostics" or "\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Control\\Nls\\Sorting\\Versions"
+    /// </summary>
+    /// <example>
+    /// ("\\Sessions\\1\\BaseNamedObjects\\SM0:25004:304:WilStaging_02", null)
+    /// ("\\Device\\HarddiskVolume4\\Users\\NoahR\\AppData\\Roaming\\Code\\logs\\20230408T181715\\window1\\exthost\\output_logging_20230408T181718\\13-DTDL.log", null)
+    /// ("\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Control\\Nls\\Sorting\\Versions", null)
+    /// ("\\Device\\CNG", null)
+    /// </example>
     public unsafe (string? v, Exception? ex) ObjectName
     {
         get
