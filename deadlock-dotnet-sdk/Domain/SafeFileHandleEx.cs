@@ -249,11 +249,12 @@ public class SafeFileHandleEx : SafeHandleEx
                 throw new InvalidOperationException("Unable to query disk/network path; The File object is not a Disk-type File.");
 
             uint bufLength = (uint)short.MaxValue;
-            using PWSTR getLengthBuffer = new((char*)Marshal.AllocHGlobal(1));
             using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufLength));
             uint length = 0;
 
             // Try without duplicating. If it fails, try duplicating the handle.
+            var sw = new Stopwatch();
+            sw.Start();
             try
             {
                 const int timeout = 50;
@@ -290,6 +291,11 @@ public class SafeFileHandleEx : SafeHandleEx
             catch (Exception ex)
             {
                 _ = ex;
+            }
+            finally
+            {
+                sw.Stop();
+                Console.Out.WriteLine($"(handle 0x{handle:X}) TryGetFinalPath time: {sw.Elapsed}"); // TODO: debug. Determine better timeout.
             }
 
             /// Return the normalized drive name. This is the default.
