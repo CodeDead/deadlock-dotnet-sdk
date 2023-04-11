@@ -1,9 +1,11 @@
 using System.ComponentModel;
+using System.Text;
 
 namespace deadlock_dotnet_sdk.Domain
 {
     //TODO: Add RefreshList(). This should clear Lockers and call FindLockingHandles again.
     //TODO: If a handle is closed or invalid, remove if from Lockers. SafeHandle.IsClosed is unreliable—it only works on handles managed by the current process.
+    //TODO: feat: finalize OrderBy parameters
     //https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/SafeHandle.cs
     public class FileLockerEx
     {
@@ -13,9 +15,81 @@ namespace deadlock_dotnet_sdk.Domain
         public string Path { get; }
         public HandlesFilter Filter { get; }
 
+        public SortByProperty SortByPrimary { get; set; } = SortByProperty.ProcessId;
+        public SortByProperty SortBySecondary { get; set; } = SortByProperty.ObjectProperName;
+
+        /// <summary>Used by the user to choose the primary and secondary sortation orders i.e. sort by process id and then by handle value</summary>
+        public enum SortByProperty
+        {
+            /// <summary>NOT IMPLEMENTED</summary>
+            FileShareAccess, // oh, this is important! Note: System Informer seems to crash when evaluating this property // TODO: implement FileShareAccess property
+            HandleAttributes,
+            HandleName,
+            HandleType,
+            HandleValue,
+            GrantedAccessHexadecimal,
+            GrantedAccessSymbolic,
+            /// <summary>The string returned to the ObjectName property via NtQueryObject.</summary>
+            ObjectOriginalName,
+            /// <summary>
+            /// (NOT IMPLEMENTED)
+            /// Differs from ObjectName for types {File, (Registry) Key}
+            /// </summary>
+            /// TODO: get 'real' paths e.g. "\REGISTRY\MACHINE" -> "HKLM"
+            ObjectProperName,
+            ObjectAddress,
+            ProcessId
+        }
+
         // TODO: order by Process ID and then by handle value. Later todo: allow user-specified sorting rule (e.g. by column/property)
         /// <summary>Get or set the List of handles that are locking the file</summary>
-        public List<SafeFileHandleEx> Lockers => Processes.SelectMany(pi => pi.Handles).Cast<SafeFileHandleEx>().OrderBy(h => h.ProcessId).ToList();
+        public List<SafeFileHandleEx> Lockers
+        {
+            get
+            {
+                return Processes
+                    .SelectMany(pi => pi.Handles)
+                    .Cast<SafeFileHandleEx>()
+                    .OrderBy(h =>
+                    {
+                        switch (SortByPrimary)
+                        {
+                            case SortByProperty.FileShareAccess: throw new NotImplementedException("FileShareAccess is not yet implemented!");
+                            case SortByProperty.HandleAttributes: throw new NotImplementedException("HandleAttributes is not yet implemented!");//return h.HandleAttributes; // TODO: h.HandleAttributes
+                            case SortByProperty.HandleName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
+                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
+                            case SortByProperty.HandleValue: return Encoding.ASCII.GetBytes(h.HandleValue.ToString());
+                            case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
+                            case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
+                            case SortByProperty.ObjectOriginalName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
+                            case SortByProperty.ObjectProperName: throw new NotImplementedException("ObjectTrueName is not yet implemented!");
+                            case SortByProperty.ObjectAddress: return BitConverter.GetBytes((ulong)h.ObjectAddress);
+                            case SortByProperty.ProcessId: return BitConverter.GetBytes(h.ProcessId);
+                            default: goto case SortByProperty.ProcessId;
+                        }
+                    })
+                    .ThenBy(h =>
+                    {
+                        switch (SortBySecondary)
+                        {
+                            case SortByProperty.FileShareAccess: throw new NotImplementedException("FileShareAccess is not yet implemented!");
+                            case SortByProperty.HandleAttributes: throw new NotImplementedException("HandleAttributes is not yet implemented!");//return h.HandleAttributes; // TODO: h.HandleAttributes
+                            case SortByProperty.HandleName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
+                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
+                            case SortByProperty.HandleValue: return Encoding.ASCII.GetBytes(h.HandleValue.ToString());
+                            case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
+                            case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
+                            case SortByProperty.ObjectOriginalName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
+                            case SortByProperty.ObjectProperName: throw new NotImplementedException("ObjectTrueName is not yet implemented!");
+                            case SortByProperty.ObjectAddress: return BitConverter.GetBytes((ulong)h.ObjectAddress);
+                            case SortByProperty.ProcessId: return BitConverter.GetBytes(h.ProcessId);
+                            default: goto case SortByProperty.ProcessId;
+                        }
+                    })
+                    .ToList();
+            }
+        }
+
         public List<ProcessInfo> Processes { get; private set; }
 
         #endregion Properties
