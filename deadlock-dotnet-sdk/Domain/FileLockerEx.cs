@@ -11,7 +11,7 @@ namespace deadlock_dotnet_sdk.Domain
     {
         #region Properties
 
-        /// <summary>The path of the file that is locked</summary>
+        /// <summary>A keyphrase or the full or partial path of the locked file.</summary>
         public string Path { get; }
         public HandlesFilter Filter { get; }
 
