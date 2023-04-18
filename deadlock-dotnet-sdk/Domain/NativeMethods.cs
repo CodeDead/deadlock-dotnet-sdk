@@ -34,6 +34,22 @@ internal static class NativeMethods
 
     #endregion Variables
 
+    #region Properties
+
+    private static ProcessList processes = new();
+    public static ProcessList Processes
+    {
+        get
+        {
+            if (processes.Count is 0)
+                processes = (ProcessList)Process.GetProcesses().ToList().ConvertAll<ProcessInfo>(p => new(p)).ToList();
+            return (ProcessList)processes.OrderBy(p => p.Process.Id).ToList();
+        }
+        set { processes = value; }
+    }
+
+    #endregion Properties
+
     #region Methods
 
     /// <summary>

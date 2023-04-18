@@ -43,12 +43,12 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             try
             {
-                if (ProcessIsProtected.v is true)
+                if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
                 {
-                    if (ProcessName.v is "smss")
-                        ExceptionLog.Add(new UnauthorizedAccessException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessName}, PID {ProcessId})"));
+                    if (ProcessInfo.ProcessName.v is "smss")
+                        ExceptionLog.Add(new UnauthorizedAccessException($"The Handle's Name is inaccessible because the handle is owned by Windows Session Manager SubSystem ({ProcessInfo.ProcessName}, PID {ProcessId})"));
                     else
-                        ExceptionLog.Add(new UnauthorizedAccessException($"The Handle's Name is inaccessible because the handle is owned by {ProcessName} (PID {ProcessId})"));
+                        ExceptionLog.Add(new UnauthorizedAccessException($"The Handle's Name is inaccessible because the handle is owned by {ProcessInfo.ProcessName} (PID {ProcessId})"));
                 }
             }
             catch (Exception e)
@@ -237,9 +237,9 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         try
         {
-            if (ProcessProtection.v is null)
-                throw new InvalidOperationException("Unable to query disk/network path; Failed to query the process's protection:" + Environment.NewLine + ProcessProtection.ex);
-            if (ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
+            if (ProcessInfo.ProcessProtection.v is null)
+                throw new InvalidOperationException("Unable to query disk/network path; Failed to query the process's protection:" + Environment.NewLine + ProcessInfo.ProcessProtection.ex);
+            if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
                 throw new UnauthorizedAccessException("Unable to query disk/network path; The process is protected.");
             if (HandleObjectType.v is null)
                 throw new InvalidOperationException("Unable to query disk/network path; Failed to query handle object type." + Environment.NewLine + HandleObjectType.ex);
@@ -347,30 +347,32 @@ public class SafeFileHandleEx : SafeHandleEx
 
     public override string ToString()
     {
-        string[] exLog = ExceptionLog.Cast<string>().ToArray();
+        string[] exLog = ExceptionLog.ConvertAll(ex => ex.ToString()).ToArray();
         for (int i = 0; i < exLog.Length; i++)
         {
             exLog[i] = $" {exLog[i]}".Replace("\n", "\n    ") + Environment.NewLine;
         }
 
         return @$"{GetType().Name} hash:{GetHashCode()}
-        {nameof(CreatorBackTraceIndex)} : {CreatorBackTraceIndex}
-        {nameof(FileFullPath)}          : {FileFullPath.v ?? FileFullPath.ex?.ToString()}
-        {nameof(FileHandleType)}        : {FileHandleType.v?.ToString() ?? FileFullPath.ex?.ToString()} 
-        {nameof(FileName)}              : {FileName.v ?? FileName.ex?.ToString()}
-        {nameof(GrantedAccess)}         : {SysHandleEx.GrantedAccessString}
-        {nameof(HandleObjectType)}      : {HandleObjectType.v ?? HandleObjectType.ex?.ToString()}
-        {nameof(HandleValue)}           : {HandleValue} (0x{HandleValue:X})
-        {nameof(IsClosed)}              : {IsClosed}
-        {nameof(IsDirectory)}           : {IsDirectory.v?.ToString() ?? IsDirectory.ex?.ToString()}
-        {nameof(IsFileHandle)}          : {IsFileHandle.v?.ToString() ?? IsFileHandle.ex?.ToString()}
-        {nameof(IsInvalid)}             : {IsInvalid}
-        {nameof(ObjectAddress)}         : {ObjectAddress} (0x{ObjectAddress:X})
-        {nameof(ProcessCommandLine)}    : {ProcessCommandLine.v ?? ProcessCommandLine.ex?.ToString()}
-        {nameof(ProcessId)}             : {ProcessId}
-        {nameof(ProcessMainModulePath)} : {ProcessMainModulePath.v ?? ProcessMainModulePath.ex?.ToString()}
-        {nameof(ProcessName)}           : {ProcessName.v ?? ProcessName.ex?.ToString()}
-        {nameof(ExceptionLog)}          : ...        
+        {nameof(CreatorBackTraceIndex)}             : {CreatorBackTraceIndex}
+        {nameof(FileFullPath)}                      : {FileFullPath.v ?? FileFullPath.ex?.ToString()}
+        {nameof(FileHandleType)}                    : {FileHandleType.v?.ToString() ?? FileFullPath.ex?.ToString()} 
+        {nameof(FileName)}                          : {FileName.v ?? FileName.ex?.ToString()}
+        {nameof(GrantedAccess)}                     : {SysHandleEx.GrantedAccessString}
+        {nameof(HandleObjectType)}                  : {HandleObjectType.v ?? HandleObjectType.ex?.ToString()}
+        {nameof(HandleValue)}                       : {HandleValue} (0x{HandleValue:X})
+        {nameof(IsClosed)}                          : {IsClosed}
+        {nameof(IsDirectory)}                       : {IsDirectory.v?.ToString() ?? IsDirectory.ex?.ToString()}
+        {nameof(IsFileHandle)}                      : {IsFileHandle.v?.ToString() ?? IsFileHandle.ex?.ToString()}
+        {nameof(IsInvalid)}                         : {IsInvalid}
+        {nameof(ObjectAddress)}                     : {ObjectAddress} (0x{ObjectAddress:X})
+        {nameof(ObjectName)}                        : {ObjectName.v ?? ObjectName.ex?.ToString()}
+        {nameof(ProcessId)}                         : {ProcessId}
+        {nameof(ProcessInfo.ProcessCommandLine)}    : {ProcessInfo.ProcessCommandLine.v ?? ProcessInfo.ProcessCommandLine.ex?.ToString()}
+        {nameof(ProcessInfo.ProcessMainModulePath)} : {ProcessInfo.ProcessMainModulePath.v ?? ProcessInfo.ProcessMainModulePath.ex?.ToString()}
+        {nameof(ProcessInfo.ProcessName)}           : {ProcessInfo.ProcessName.v ?? ProcessInfo.ProcessName.ex?.ToString()}
+        {nameof(ProcessInfo.ProcessProtection)}     : {(ProcessInfo.ProcessProtection.v is not null ? (ProcessInfo.ProcessProtection.v.ToString()) : (ProcessInfo.ProcessProtection.ex?.ToString()))}
+        {nameof(ExceptionLog)}                      : ...
         " + string.Concat(exLog);
     }
 }
