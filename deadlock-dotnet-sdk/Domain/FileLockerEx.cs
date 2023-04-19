@@ -9,6 +9,7 @@ namespace deadlock_dotnet_sdk.Domain
     //https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/SafeHandle.cs
     public class FileLockerEx
     {
+        private List<SafeFileHandleEx> lockers;
         #region Properties
 
         /// <summary>A keyphrase or the full or partial path of the locked file.</summary>
@@ -47,9 +48,7 @@ namespace deadlock_dotnet_sdk.Domain
         {
             get
             {
-                return Processes
-                    .SelectMany(pi => pi.Handles)
-                    .Cast<SafeFileHandleEx>()
+                return lockers
                     .OrderBy(h =>
                     {
                         switch (SortByPrimary)
@@ -90,8 +89,6 @@ namespace deadlock_dotnet_sdk.Domain
             }
         }
 
-        public List<ProcessInfo> Processes { get; private set; }
-
         #endregion Properties
 
         /// <summary>
@@ -100,7 +97,7 @@ namespace deadlock_dotnet_sdk.Domain
         public FileLockerEx()
         {
             Path = "";
-            Processes = new();
+            lockers = new();
         }
 
         /// <summary>
@@ -133,7 +130,7 @@ namespace deadlock_dotnet_sdk.Domain
                     warningException = new("Failed to enable Debug Mode for greater access to processes which do not belong to the current user or admin.", uae);
             }
 
-            Processes = NativeMethods.FindLockingHandles(path, filter);
+            lockers = NativeMethods.FindLockingHandles(path, filter);
         }
 
         /// <summary>
@@ -150,9 +147,10 @@ namespace deadlock_dotnet_sdk.Domain
             IncludeProtectedProcesses = (1 << 2) + IncludeFailedTypeQuery
         }
 
+        /// <summary>Clear existing handles from list and query system for new list.</summary>
         public void Refresh()
         {
-            Processes = NativeMethods.FindLockingHandles(Path, Filter);
+            lockers = NativeMethods.FindLockingHandles(Path, Filter);
         }
     }
 }

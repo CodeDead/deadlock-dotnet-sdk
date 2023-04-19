@@ -37,6 +37,7 @@ internal static class NativeMethods
     #region Properties
 
     private static ProcessList processes = new();
+    //TODO: ProcessList garbage collection. Count references and remove a ProcessInfo entry when references is 0 (or 1 if the only reference is by field 'processes').
     public static ProcessList Processes
     {
         get
@@ -142,33 +143,31 @@ internal static class NativeMethods
     /// <returns>
     ///     A list of SafeFileHandleEx objects. When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
     /// </returns>
-    /// TODO: optimize process inspection. Stuff like IsProcessProtected should only be queried once per process
-    internal static List<ProcessInfo> FindLockingHandles(string query, HandlesFilter filter = HandlesFilter.FilesOnly)
+    /// TODO: contemplate fuzzy search benefits. See FuzzySharp (https://www.nuget.org/packages/FuzzySharp | https://github.com/JakeBayer/FuzzySharp)
+    internal static List<SafeFileHandleEx> FindLockingHandles(string query, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
-        List<ProcessInfo> processes = Process
-            .GetProcesses()
-            .ToList()
-            .ConvertAll(p => new ProcessInfo(p));
-        var handles = GetSystemHandleInfoEx()
-            .ToArray()
-            .GroupBy(h => h.UniqueProcessId);
         var sw = Stopwatch.StartNew();
 
-        var results = Parallel.ForEach(processes, p =>
+        IEnumerable<IGrouping<int, SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX>> handles = GetSystemHandleInfoEx().ToArray().GroupBy(h => (int)h.UniqueProcessId);
+        List<SafeFileHandleEx> safeHandles = new();
+
+        ParallelLoopResult results;
+        if (!(results = Parallel.ForEach(
+            handles,
+            h =>
+                safeHandles.AddRange(
+                    h.ToList()
+                        .ConvertAll<SafeFileHandleEx>(h => new(h))
+                        .Where(h => keep(h)))))
+            .IsCompleted)
         {
-            var match = handles.FirstOrDefault(group => (int)group.Key == p.Process.Id);
-            if (match is not null)
-                p.Handles.AddRange(match.ToList().ConvertAll<SafeFileHandleEx>(h => new(h)).Where(h => keep(h)));
-            else
-                return;
-        });
+            Trace.TraceError("The parallel ForEach loop in FindLockingHandles ended early.");
+        }
 
-        processes.Sort((a, b) => a.Process.Id.CompareTo(b.Process.Id));
         sw.Stop();
-        Console.WriteLine("FindLockingHandles time elapsed: " + sw.Elapsed);
+        Trace.TraceInformation("FindLockingHandles time elapsed: " + sw.Elapsed);
 
-        //return handles;
-        return processes;
+        return safeHandles;
 
         bool keep(SafeFileHandleEx h)
         {
@@ -200,7 +199,7 @@ internal static class NativeMethods
             if (!keep && filter.HasFlag(HandlesFilter.IncludeProtectedProcesses))
             {
                 // if a process is protected, do not discard the handle
-                keep = h.ProcessIsProtected.v is true;
+                keep = h.ProcessInfo.ProcessIsProtected.v is true;
             }
             if (!keep && filter.HasFlag(HandlesFilter.IncludeNonFiles))
             {
