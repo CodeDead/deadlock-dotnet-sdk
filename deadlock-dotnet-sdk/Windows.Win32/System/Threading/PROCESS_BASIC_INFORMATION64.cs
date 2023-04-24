@@ -12,8 +12,8 @@ internal readonly struct PROCESS_BASIC_INFORMATION64
 {
     [FieldOffset(0x00)] public readonly NTSTATUS ExitStatus;
     [FieldOffset(0x04)] public readonly UIntPtr64<PEB64> PebBaseAddress;
-    [FieldOffset(0x00)] public readonly KAFFINITY64 AffinityMask;
-    [FieldOffset(0x00)] public readonly KPRIORITY BasePriority;
-    [FieldOffset(0x00)] public readonly ulong UniqueProcessId;
-    [FieldOffset(0x00)] public readonly ulong InheritedFromUniqueProcessId;
+    [FieldOffset(0x0C)] public readonly KAFFINITY64 AffinityMask;
+    [FieldOffset(0x14)] public readonly KPRIORITY BasePriority;
+    [FieldOffset(0x18)] public readonly ulong UniqueProcessId;
+    [FieldOffset(0x20)] public readonly ulong InheritedFromUniqueProcessId;
 }
