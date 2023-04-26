@@ -471,31 +471,23 @@ public partial class ProcessInfo
         {
             if (processMainModulePath == default)
             {
-                if (ProcessProtection.v is not null)
+                if (ProcessProtection.v is null)
+                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Failed to query the process's protection:" + Env.NewLine + ProcessProtection.ex));
+
+                if (ProcessProtection.v.Value.Type is PsProtectedTypeProtected)
+                    return processMainModulePath = (null, new UnauthorizedAccessException("Unable to query ProcessMainModulePath; The process is protected."));
+
+                try
                 {
-                    if (ProcessProtection.v.Value.Type is PsProtectedTypeNone or PsProtectedTypeProtectedLight)
-                    {
-                        try
-                        {
-                            return processMainModulePath = (GetFullProcessImageName((uint)ProcessId), null);
-                        }
-                        catch (Win32Exception ex) when (ex.ErrorCode == 31)
-                        {
-                            return processMainModulePath = (null, new InvalidOperationException("Process has exited, so the requested information is not available.", ex));
-                        }
-                        catch (Exception ex)
-                        {
-                            return processMainModulePath = (null, ex);
-                        }
-                    }
-                    else
-                    {
-                        return processMainModulePath = (null, new UnauthorizedAccessException("Unable to query ProcessMainModulePath; The process is protected."));
-                    }
+                    return processMainModulePath = (GetFullProcessImageName((uint)ProcessId), null);
                 }
-                else
+                catch (Win32Exception ex) when (ex.ErrorCode == 31)
                 {
-                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Failed to query the process's protection:" + NewLine + ProcessProtection.ex));
+                    return processMainModulePath = (null, new InvalidOperationException("Process has exited, so the requested information is not available.", ex));
+                }
+                catch (Exception ex)
+                {
+                    return processMainModulePath = (null, ex);
                 }
             }
             else
@@ -511,24 +503,16 @@ public partial class ProcessInfo
         {
             if (processName == default)
             {
-                switch (ProcessId)
+                try
                 {
-                    case 0:
-                        return processName = ("System Idle Process", null);
-                    case 4:
-                        return processName = ("System", null);
-                    default:
-                        try
-                        {
-                            var proc = Process.GetProcessById(ProcessId);
-                            if (proc.HasExited)
-                                return processName = (null, new InvalidOperationException("Process has exited, so the requested information is not available."));
-                            else return processName = (Process.GetProcessById(ProcessId).ProcessName, null);
-                        }
-                        catch (Exception ex)
-                        {
-                            return processName = (null, ex);
-                        }
+                    var proc = Process.GetProcessById(ProcessId);
+                    if (proc?.HasExited != false)
+                        return processName = (null, new InvalidOperationException("Process has exited, so the requested information is not available."));
+                    else return processName = (proc.ProcessName, null);
+                }
+                catch (Exception ex)
+                {
+                    return processName = (null, ex);
                 }
             }
             else
