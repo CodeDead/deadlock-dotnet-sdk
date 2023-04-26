@@ -26,6 +26,7 @@ namespace deadlock_dotnet_sdk.Domain
             FileShareAccess, // oh, this is important! Note: System Informer seems to crash when evaluating this property // TODO: implement FileShareAccess property
             HandleAttributes,
             HandleName,
+            HandleSubType,
             HandleType,
             HandleValue,
             GrantedAccessHexadecimal,
@@ -56,7 +57,8 @@ namespace deadlock_dotnet_sdk.Domain
                             case SortByProperty.FileShareAccess: throw new NotImplementedException("FileShareAccess is not yet implemented!");
                             case SortByProperty.HandleAttributes: throw new NotImplementedException("HandleAttributes is not yet implemented!");//return h.HandleAttributes; // TODO: h.HandleAttributes
                             case SortByProperty.HandleName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
-                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
+                            case SortByProperty.HandleSubType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
+                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.HandleObjectType.v?.ToString() ?? string.Empty);
                             case SortByProperty.HandleValue: return Encoding.ASCII.GetBytes(h.HandleValue.ToString());
                             case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
                             case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
@@ -74,7 +76,8 @@ namespace deadlock_dotnet_sdk.Domain
                             case SortByProperty.FileShareAccess: throw new NotImplementedException("FileShareAccess is not yet implemented!");
                             case SortByProperty.HandleAttributes: throw new NotImplementedException("HandleAttributes is not yet implemented!");//return h.HandleAttributes; // TODO: h.HandleAttributes
                             case SortByProperty.HandleName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
-                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
+                            case SortByProperty.HandleSubType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
+                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.HandleObjectType.v?.ToString() ?? string.Empty);
                             case SortByProperty.HandleValue: return Encoding.ASCII.GetBytes(h.HandleValue.ToString());
                             case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
                             case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
