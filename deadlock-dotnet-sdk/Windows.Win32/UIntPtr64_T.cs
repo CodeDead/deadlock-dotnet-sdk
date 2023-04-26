@@ -10,4 +10,6 @@ internal struct UIntPtr64<T> where T : unmanaged
 
     public static explicit operator UIntPtr64(UIntPtr64<T> v) => v.Value;
     public static explicit operator UIntPtr64<T>(UIntPtr64 v) => new() { Value = v.Value };
+
+    public unsafe static explicit operator T*(UIntPtr64<T> v) => (T*)v.Value;
 }
