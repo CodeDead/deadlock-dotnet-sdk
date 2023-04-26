@@ -44,7 +44,7 @@ internal static class NativeMethods
         {
             if (processes.Count is 0)
                 processes = (ProcessList)Process.GetProcesses().ToList().ConvertAll<ProcessInfo>(p => new(p)).ToList();
-            return (ProcessList)processes.OrderBy(p => p.Process.Id).ToList();
+            return (ProcessList)processes.OrderBy(p => p.ProcessId).ToList();
         }
         set { processes = value; }
     }
