@@ -385,12 +385,6 @@ public partial class ProcessInfo
 
     //public bool ProcessIs64Bit { get; } // unused, for now
 
-    public unsafe (bool? v, Exception? ex) ProcessIsProtected => processIsProtected == default
-                ? ProcessProtection.v is not null
-                    ? (processIsProtected = (ProcessProtection.v.Value.Type > PsProtectedTypeNone, null))
-                    : (processIsProtected = (null, new Exception("ProcessProtection query failed.", ProcessProtection.ex)))
-                : processIsProtected;
-
     public unsafe (PS_PROTECTION? v, Exception? ex) ProcessProtection
     {
         get

@@ -201,7 +201,7 @@ internal static class NativeMethods
             if (!keep && (filter & HandlesFilter.IncludeProtectedProcesses) == HandlesFilter.IncludeProtectedProcesses)
             {
                 // if a process is protected, do not discard the handle
-                keep = h.ProcessInfo.ProcessIsProtected.v is true;
+                keep = h.ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected;
             }
             if (!keep && (filter & HandlesFilter.IncludeNonFiles) != 0)
             {
