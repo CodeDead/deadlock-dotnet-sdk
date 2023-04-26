@@ -21,14 +21,14 @@ partial struct PEB
 
     #region bit field
 
-    public bool ImageUsesLargePages => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.ImageUsesLargePages);
-    public bool IsProtectedProcess => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.IsProtectedProcess);
-    public bool IsImageDynamicallyRelocated => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.IsImageDynamicallyRelocated);
-    public bool SkipPatchingUser32Forwarders => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.SkipPatchingUser32Forwarders);
-    public bool IsPackagedProcess => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.IsPackagedProcess);
-    public bool IsAppContainer => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.IsAppContainer);
-    public bool IsProtectedProcessLight => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.IsProtectedProcessLight);
-    public bool IsLongPathAwareProcess => ((R2_bits)Reserved2[0]).HasFlag(R2_bits.IsLongPathAwareProcess);
+    public bool ImageUsesLargePages => (((R2_bits)Reserved2[0]) & R2_bits.ImageUsesLargePages) != 0;
+    public bool IsProtectedProcess => (((R2_bits)Reserved2[0]) & R2_bits.IsProtectedProcess) != 0;
+    public bool IsImageDynamicallyRelocated => (((R2_bits)Reserved2[0]) & R2_bits.IsImageDynamicallyRelocated) == R2_bits.IsImageDynamicallyRelocated;
+    public bool SkipPatchingUser32Forwarders => (((R2_bits)Reserved2[0]) & R2_bits.SkipPatchingUser32Forwarders) != 0;
+    public bool IsPackagedProcess => (((R2_bits)Reserved2[0]) & R2_bits.IsPackagedProcess) == R2_bits.IsPackagedProcess;
+    public bool IsAppContainer => (((R2_bits)Reserved2[0]) & R2_bits.IsAppContainer) == R2_bits.IsAppContainer;
+    public bool IsProtectedProcessLight => (((R2_bits)Reserved2[0]) & R2_bits.IsProtectedProcessLight) == R2_bits.IsProtectedProcessLight;
+    public bool IsLongPathAwareProcess => (((R2_bits)Reserved2[0]) & R2_bits.IsLongPathAwareProcess) != 0;
 
     [Flags]
     private enum R2_bits : byte
@@ -90,14 +90,14 @@ partial struct PEB
 
     #region CrossProcessFlags
 
-    public bool ProcessInJob => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessInJob);
-    public bool ProcessInitializing => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessInitializing);
-    public bool ProcessUsingVEH => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessUsingVEH);
-    public bool ProcessUsingVCH => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessUsingVCH);
-    public bool ProcessUsingFTH => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessUsingFTH);
-    public bool ProcessPreviouslyThrottled => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessPreviouslyThrottled);
-    public bool ProcessCurrentlyThrottled => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessCurrentlyThrottled);
-    public bool ProcessImagesHotPatched => ((CrossProcessFlags)Reserved6).HasFlag(CrossProcessFlags.ProcessImagesHotPatched); // REDSTONE5 
+    public bool ProcessInJob => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessInJob) != 0;
+    public bool ProcessInitializing => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessInitializing) != 0;
+    public bool ProcessUsingVEH => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessUsingVEH) != 0;
+    public bool ProcessUsingVCH => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessUsingVCH) != 0;
+    public bool ProcessUsingFTH => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessUsingFTH) != 0;
+    public bool ProcessPreviouslyThrottled => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessPreviouslyThrottled) != 0;
+    public bool ProcessCurrentlyThrottled => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessCurrentlyThrottled) != 0;
+    public bool ProcessImagesHotPatched => (((CrossProcessFlags)Reserved6) & CrossProcessFlags.ProcessImagesHotPatched) != 0; // REDSTONE5 
 
     [Flags]
     private enum CrossProcessFlags : uint

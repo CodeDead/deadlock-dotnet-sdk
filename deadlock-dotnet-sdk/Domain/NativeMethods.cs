@@ -198,17 +198,17 @@ internal static class NativeMethods
             }
 
             /* Check combined filters in reverse order */
-            if (!keep && filter.HasFlag(HandlesFilter.IncludeProtectedProcesses))
+            if (!keep && (filter & HandlesFilter.IncludeProtectedProcesses) == HandlesFilter.IncludeProtectedProcesses)
             {
                 // if a process is protected, do not discard the handle
                 keep = h.ProcessInfo.ProcessIsProtected.v is true;
             }
-            if (!keep && filter.HasFlag(HandlesFilter.IncludeNonFiles))
+            if (!keep && (filter & HandlesFilter.IncludeNonFiles) != 0)
             {
                 // keep if object type query succeeded
                 keep = !string.IsNullOrWhiteSpace(h.HandleObjectType.v);
             }
-            if (!keep && filter.HasFlag(HandlesFilter.IncludeFailedTypeQuery))
+            if (!keep && (filter & HandlesFilter.IncludeFailedTypeQuery) != 0)
             {
                 keep = string.IsNullOrWhiteSpace(h.HandleObjectType.v);
             }
