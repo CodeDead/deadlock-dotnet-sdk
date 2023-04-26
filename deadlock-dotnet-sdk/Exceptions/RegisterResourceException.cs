@@ -1,5 +1,3 @@
-﻿using PInvoke;
-
 namespace deadlock_dotnet_sdk.Exceptions
 {
     public class RegisterResourceException : Exception
@@ -17,6 +15,5 @@ namespace deadlock_dotnet_sdk.Exceptions
 
         public RegisterResourceException(string? message, Exception innerException) : base(message, innerException)
         { }
-
     }
 }

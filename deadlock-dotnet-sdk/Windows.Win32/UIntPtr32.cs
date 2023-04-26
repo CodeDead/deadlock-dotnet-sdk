@@ -1,5 +1,3 @@
-using System;
-using System.Runtime.InteropServices;
 namespace Windows.Win32;
 
 /// <summary>

@@ -1,4 +1,3 @@
-using System.Data;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
