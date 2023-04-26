@@ -175,21 +175,21 @@ public partial class ProcessInfo
                     {
                         // Debug Mode could not be enabled? Was SE_DEBUG_NAME denied to user or is current process not elevated?
                         string exPermsSecond = Env.NewLine + "Second attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
-                        return (null, new UnauthorizedAccessException(exAccessMsg + exPermsFirst + exPermsSecond, ex2));
+                        return processHandle = (null, new UnauthorizedAccessException(exAccessMsg + exPermsFirst + exPermsSecond, ex2));
                     }
                     catch (Exception ex2)
                     {
-                        return (null, new AggregateException(exMsg + " Permissions were denied and an unknown error occurred.", new Exception[] { ex, ex2 }));
+                        return processHandle = (null, new AggregateException(exMsg + " Permissions were denied and an unknown error occurred.", new Exception[] { ex, ex2 }));
                     }
                 }
                 catch (Win32Exception ex) when ((Win32ErrorCode)ex.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_PARAMETER)
                 {
-                    return (null, new ArgumentException(exMsg + " A process with ID " + ProcessId + " could not be found. The process may have exited.", ex));
+                    return processHandle = (null, new ArgumentException(exMsg + " A process with ID " + ProcessId + " could not be found. The process may have exited.", ex));
                 }
                 catch (Exception ex)
                 {
                     // unknown error
-                    return (null, new Exception(exMsg + " An unknown error occurred.", ex));
+                    return processHandle = (null, new Exception(exMsg + " An unknown error occurred.", ex));
                 }
             }
             else
