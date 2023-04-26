@@ -1,15 +1,16 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using PInvoke;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.System.SystemInformation;
 using Windows.Win32.System.Threading;
-using Windows.Win32.System.WindowsProgramming;
-using static System.Environment;
 using static Windows.Win32.PInvoke;
 using static Windows.Win32.PS_PROTECTION.PS_PROTECTED_TYPE;
 using Code = PInvoke.NTSTATUS.Code;
+using Env = System.Environment;
 using NTSTATUS = Windows.Win32.Foundation.NTSTATUS;
 using Win32Exception = System.ComponentModel.Win32Exception;
 
@@ -19,6 +20,8 @@ public partial class ProcessInfo
 {
     private bool canGetQueryLimitedInfoHandle;
     private bool canGetReadMemoryHandle;
+    private (bool? v, Exception? ex) is32BitEmulatedProcess;
+    private (ProcessAndHostOSArch? arch, Exception? ex) processAndHostOSArch;
     private (string? v, Exception? ex) processCommandLine;
     private (ProcessQueryHandle? v, Exception? ex) processHandle;
     private (bool? v, Exception? ex) processIsProtected;
@@ -38,9 +41,108 @@ public partial class ProcessInfo
         Process = process;
     }
 
+    /// <summary>
+    /// <para>
+    ///     TRUE if the process is...<br/>
+    ///     <ul>
+    ///         <li>...running under WOW64 on an Intel64, x64, AMD64, or ARM64 processor.</li><br/>
+    ///         <li>...a 32-bit application running under 64-bit Windows 10 on ARM.</li><br/>
+    ///     </ul>
+    /// </para>
+    /// <para>
+    ///     FALSE if the process is...<br/>
+    ///     <ul>
+    ///         <li>...running under 32-bit Windows.</li><br/>
+    ///         <li>...a 64-bit application running under 64-bit Windows.</li><br/>
+    ///     </ul>
+    /// </para>
+    /// </summary>
+    /// <remarks>This property's P/Invoke of IsWow64Process(HANDLE, BOOL) requires a process handle with <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_INFORMATION"/> or <see cref="PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION"/>.</remarks>
+    public (bool? v, Exception? ex) Is32BitEmulatedProcess
+    {
+        get
+        {
+            if (is32BitEmulatedProcess is (null, null))
+            {
+                if (ProcessHandle.v is null)
+                {
+                    InvalidOperationException ex = new("Unable to query Is32BitEmulatedProcess; Failed to open a process handle with the necessary access.", processHandle.ex);
+                    processAndHostOSArch = (null, ex);
+                    return is32BitEmulatedProcess = (null, ex);
+                }
+                else if ((ProcessHandle.v.AccessRights & (PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION)) is 0)
+                {
+                    UnauthorizedAccessException ex = new("Unable to query Is32BitEmulatedProcess; A process handle was opened, but lacked the necessary access rights ", ProcessHandle.ex);
+                    processAndHostOSArch = (null, ex);
+                    return is32BitEmulatedProcess = (null, ex);
+                }
+                else if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 10586))
+                {
+                    unsafe
+                    {
+                        IMAGE_FILE_MACHINE pNativeMachine = default;
+                        /** if UNKNOWN, then process architecture is the same as host architecture i.e. process is ARM64 and host is ARM64
+                             * So, pProcessMachine will never be I386 or ARM when the host is either of those.
+                             * Because the purpose of this property and function call is to determine if we need to use 32-bit or 64-bit definitions, we only care about the following return values:
+                             *   IMAGE_FILE_MACHINE_UNKNOWN - The process is running natively. No emulation is taking place.
+                             *   IMAGE_FILE_MACHINE_I386    - The process is running through an emulation layer. The host is probably either ARM64 or AMD64.
+                             *   IMAGE_FILE_MACHINE_ARM     - The process is running through an emulation layer. The host is probably either ARM64 or AMD64. If it's a Windows ARM32 PE, then it's a UWP app.
+                             */
+                        if (IsWow64Process2(ProcessHandle.v.Handle, out IMAGE_FILE_MACHINE pProcessMachine, &pNativeMachine))
+                        {
+                            processAndHostOSArch = ((pProcessMachine, pNativeMachine), null);
+                            return is32BitEmulatedProcess = (pProcessMachine is IMAGE_FILE_MACHINE.IMAGE_FILE_MACHINE_I386 or IMAGE_FILE_MACHINE.IMAGE_FILE_MACHINE_ARM, null);
+                        }
+                        else
+                        {
+                            Exception ex = new("Failed to query Is32BitEmulatedProcess.", new Win32Exception());
+                            processAndHostOSArch = (null, ex);
+                            return is32BitEmulatedProcess = (null, ex);
+                        }
+                    }
+                }
+                else if (!Windows.Win32.PInvoke.IsWow64Process(ProcessHandle.v.Handle, out BOOL IsWow64Process))
+                {
+                    return is32BitEmulatedProcess = (IsWow64Process, null);
+                }
+                else
+                {
+                    return is32BitEmulatedProcess = (null, new Win32Exception());
+                }
+            }
+            else
+            {
+                return is32BitEmulatedProcess;
+            }
+        }
+    }
+
     /// <summary>The base Process object this instance expands upon.</summary>
     public Process? Process { get; }
+
     public int ProcessId => Process?.Id ?? processId;
+
+    /// <summary>
+    /// The target ISA of the process and the ISA of the host OS.<br/>
+    /// -OR-<br/>
+    /// The exception thrown when attempting to get these values.
+    /// </summary>
+    /// <remarks>The value of this property is provided during Get accessor of Is32BitEmulatedProcess</remarks>
+    public (ProcessAndHostOSArch? v, Exception? ex) ProcessAndHostOSArch
+    {
+        get
+        {
+            if (processAndHostOSArch == default)
+            {
+                _ = Is32BitEmulatedProcess;
+                return processAndHostOSArch;
+            }
+            else
+            {
+                return processAndHostOSArch;
+            }
+        }
+    }
 
     public (ProcessQueryHandle? v, Exception? ex) ProcessHandle
     {
