@@ -21,7 +21,9 @@ public partial class ProcessInfo
     private bool canGetQueryLimitedInfoHandle;
     private bool canGetReadMemoryHandle;
     private (bool? v, Exception? ex) is32BitEmulatedProcess;
+    private (int? v, Exception?) parentId;
     private (ProcessAndHostOSArch? arch, Exception? ex) processAndHostOSArch;
+    private (ProcessBasicInformation? v, Exception? ex) processBasicInformation;
     private (string? v, Exception? ex) processCommandLine;
     private (ProcessQueryHandle? v, Exception? ex) processHandle;
     private (bool? v, Exception? ex) processIsProtected;
@@ -199,6 +201,188 @@ public partial class ProcessInfo
         }
     }
 
+    /// <summary>
+    /// Using a SafeProcessHandle with PROCESS_QUERY_LIMITED_INFORMATION access, copy the target process's PROCESS_BASIC_INFORMATION.<br/>
+    /// If the operation succeeds and SafeProcessHandle also has PROCESS_READ_VM access, additional data (e.g. CommandLine) is copied.
+    /// </summary>
+    /// TODO: implement custom Exception types
+    public unsafe void GetPropertiesViaProcessHandle()
+    {
+        if (ProcessHandle.v is null || ProcessHandle.ex is not null)
+        {
+            var ex = new Exception("Unable to query process info; Failed to open a process handle with the necessary access rights.", ProcessHandle.ex);
+            processBasicInformation = (null, ex);
+            parentId = (null, ex);
+            processCommandLine = (null, ex);
+            return;
+        }
+
+        canGetQueryLimitedInfoHandle = (ProcessHandle.v.AccessRights & PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) != 0;
+        canGetReadMemoryHandle = (ProcessHandle.v.AccessRights & PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ) != 0;
+
+        if (!canGetQueryLimitedInfoHandle)
+            throw new Exception("Unable to query process info with access right 'PROCESS_QUERY_LIMITED_INFORMATION'; The access right was denied to this process.");
+
+        if (Is32BitEmulatedProcess.v is null || Is32BitEmulatedProcess.ex is not null)
+            throw new Exception("Unable to query process's basic information; failed to determine process's targeted CPU architecture.", Is32BitEmulatedProcess.ex);
+
+        // allocate one buffer large enough for either 64-bit or 32-bit interop.
+        uint returnLength = 0;
+        NTSTATUS status;
+
+        /** If Win8.1 or later */
+
+        if (OperatingSystem.IsWindowsVersionAtLeast(6, 3) && processCommandLine is (null, null))
+        {
+            try
+            {
+                const uint ProcessCommandLineInformation = 60u;
+                uint bufferLength = (uint)Marshal.SizeOf<UNICODE_STRING>() + 2048u;
+                using SafeBuffer<byte> bufferCmdLine = new(numBytes: bufferLength);
+
+                status = NtQueryInformationProcess(
+                    ProcessHandle.v,
+                    (PROCESSINFOCLASS)ProcessCommandLineInformation,
+                    (void*)bufferCmdLine.DangerousGetHandle(),
+                    (uint)bufferCmdLine.ByteLength,
+                    ref returnLength
+                    );
+
+                while ((status = NtQueryInformationProcess(ProcessHandle.v, (PROCESSINFOCLASS)ProcessCommandLineInformation, (void*)bufferCmdLine.DangerousGetHandle(), bufferLength, ref returnLength))
+                    .Code is Code.STATUS_INFO_LENGTH_MISMATCH)
+                {
+#if DEBUG
+                    Trace.TraceInformation(
+                        "bufferLength: " + bufferCmdLine.ByteLength + Env.NewLine +
+                        "returnLength: " + returnLength);
+#endif
+                    // !WARNING may throw OutOfMemoryException; ReAllocHGlobal received a null pointer, but didn't check the error code
+                    // the native call to LocalReAlloc (via Marshal.ReAllocHGlobal) sometimes returns a null pointer. This is a Legacy function. Why does .NET not use malloc/realloc?
+                    bufferCmdLine.Reallocate(numBytes: returnLength);
+                    // none of these helped debug that internal error...
+                    //var pinerr = Marshal.GetLastPInvokeError();
+                    //var syserr = Marshal.GetLastSystemError();
+                    //var winerr = Marshal.GetLastWin32Error();
+                }
+
+                processCommandLine = status.IsSuccessful
+                    ? (bufferCmdLine.Read<UNICODE_STRING>(0).ToStringLength() ?? string.Empty, null)
+                    : throw new NTStatusException(status); // thrown, not assigned. Is the stack trace assigned if the exception is not thrown?
+            }
+            catch (Exception ex)
+            {
+                processCommandLine = (null, ex);
+            }
+        }
+
+        try
+        {
+            using SafeBuffer<byte> bufferPBI = new(numBytes: (uint)Marshal.SizeOf<PROCESS_BASIC_INFORMATION64>());
+            /** // ! this code will break if the host or process architecture isn't ARM32, AARCH64 (ARM64), i386 (x86), or AMD64/x86_x64.
+             *  IA64 (Intel Itanium) and ARMNT (ARM32 Thumb-2 Little Endian) are the most likely culprits.
+             */
+            /* Do we need to call NtWow64QueryInformationProcess64? */
+            if (Env.Is64BitOperatingSystem && !Env.Is64BitProcess && Is32BitEmulatedProcess.v is false) // yes
+            {
+                while ((status = NtWow64QueryInformationProcess64(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, &returnLength)).Code is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
+                    bufferPBI.Reallocate(numBytes: returnLength);
+
+                if (status.Code is not Code.STATUS_SUCCESS)
+                    throw new NTStatusException(status, "NtWow64QueryInformationProcess64 failed to query a process's basic information; " + status.Message);
+
+                processBasicInformation = (new ProcessBasicInformation(bufferPBI.Read<PROCESS_BASIC_INFORMATION64>(0)), null);
+            }
+            else
+            {
+                while ((status = NtQueryInformationProcess(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, ref returnLength)).Code is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
+                    bufferPBI.Reallocate(returnLength + (uint)IntPtr.Size);
+
+                if (status.Code is not Code.STATUS_SUCCESS)
+                    throw new NTStatusException(status, "NtQueryInformationProcess failed to query a process's basic information; " + status.Message);
+
+                if ((Env.Is64BitOperatingSystem && Is32BitEmulatedProcess.v is true) || (!Env.Is64BitOperatingSystem)) // that process is 32-bit
+                    processBasicInformation = (new ProcessBasicInformation(bufferPBI.Read<PROCESS_BASIC_INFORMATION32>(0)), null);
+                else
+                    processBasicInformation = (new ProcessBasicInformation(bufferPBI.Read<PROCESS_BASIC_INFORMATION64>(0)), null);
+            }
+        }
+        catch (Exception ex)
+        {
+            processBasicInformation = (null, ex);
+        }
+
+        if (processBasicInformation.v is not null)
+        {
+            /// fields/props to assign to if default and ProcessHandle has PROCESS_READ_VM:
+            /// <see cref="parentId"/>, <see cref="processCommandLine"/>
+            if (parentId is (null, null))
+                parentId = ((int)processBasicInformation.v.ParentProcessId, null);
+
+            // if any field requires PROCESS_READ_VM and ProcessHandle lacks it, assign the exception here.
+            if (!canGetReadMemoryHandle)
+            {
+                try
+                {
+                    throw new UnauthorizedAccessException("Unable to copy process's PEB and child objects; Failed to open SafeProcessHandle with PROCESS_VM_READ access.", ProcessHandle.ex);
+                }
+                catch (Exception ex)
+                {
+                    if (processCommandLine is (null, null))
+                        processCommandLine = (null, ex);
+                }
+            }
+            else
+            {
+                try
+                {
+                    //var peb = processBasicInformation.v.GetPEB(ProcessHandle.v);
+                    //var procParams = peb.GetUserProcessParameters(ProcessHandle.v);
+                    var procParams = processBasicInformation.v.GetPEB(ProcessHandle.v).GetUserProcessParameters(ProcessHandle.v);
+
+                    if (processCommandLine is (null, null))
+                        processCommandLine = (procParams.GetCommandLine(ProcessHandle.v), null);
+                }
+                catch (Exception ex)
+                {
+                    if (processCommandLine is (null, null))
+                        processCommandLine = (null, ex);
+                }
+            }
+        }
+        else
+        {
+            try
+            {
+                throw new NullReferenceException("Unable to retrieve data; This process's ProcessBasicInformation could not be retrieved.");
+            }
+            catch (Exception ex)
+            {
+                if (parentId is (null, null))
+                    parentId = (null, ex);
+                if (processCommandLine is (null, null))
+                    processCommandLine = (null, ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The ID of the process that created/started this object's Process. Used for building tree-leaf UIs.<br/>
+    /// Source: PROCESS_BASIC_INFORMATION (this.ProcessBasicInformation)
+    /// </summary>
+    /// <remarks>'v' will only be null for fake processes i.e. System Idle Process, Interrupts. Check if 'ex' is null to determine successful operation.</remarks>
+    /// TODO: ProcessBasicInformation
+    /// TODO: check field PROCESS_BASIC_INFORMATION.inheritedFromUniqueProcessId
+    public (int? v, Exception? ex) ParentId
+    {
+        get
+        {
+            if (parentId is (null, null))
+                GetPropertiesViaProcessHandle();
+
+            return parentId;
+        }
+    }
+
     //public bool ProcessIs64Bit { get; } // unused, for now
 
     public unsafe (bool? v, Exception? ex) ProcessIsProtected => processIsProtected == default
@@ -232,6 +416,27 @@ public partial class ProcessInfo
         }
     }
 
+    // TODO: ProcessBasicInformation and recursive members
+    internal (ProcessBasicInformation? v, Exception? ex) ProcessBasicInformation
+    {
+        get
+        {
+            if (processBasicInformation == default)
+            {
+                GetPropertiesViaProcessHandle();
+                return processBasicInformation;
+            }
+            else
+            {
+                return processBasicInformation;
+            }
+        }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// TODO: rework for ProcessBasicInformation
     public (string? v, Exception? ex) ProcessCommandLine
     {
         get
