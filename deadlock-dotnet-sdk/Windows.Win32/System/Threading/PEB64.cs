@@ -226,6 +226,18 @@ internal struct PEB64
     [FieldOffset(0x0338)] internal readonly UIntPtr64 FlsBitmap;
     /// <summary>Compatibility: 5.2 to 1809</summary>
     [FieldOffset(0x0340)] internal unsafe fixed uint FlsBitmapBits[4];
+    public unsafe uint[] FlsBitmapBits_Safe
+    {
+        get
+        {
+            uint[] v = new uint[4];
+
+            for (int i = 0; i < 4; i++)
+                v[i] = FlsBitmapBits[i];
+
+            return v;
+        }
+    }
     /// <summary>Compatibility: 5.2 to 1809</summary>
     [FieldOffset(0x0350)] internal readonly uint FlsHighIndex;
     #endregion Appended for Windows Server 2003
@@ -259,6 +271,18 @@ internal struct PEB64
     /// <summary>Compatibility: 1511 and higher<br/>
     /// Type: Fixed Array of void*</summary>
     [FieldOffset(0x03A0)] internal unsafe fixed ulong WaitOnAddressHashTable[0x80];
+    public unsafe ulong[] WaitOnAddressHashTable_Safe
+    {
+        get
+        {
+            ulong[] v = new ulong[0x80];
+
+            for (int i = 0; i < 0x80; i++)
+                v[i] = WaitOnAddressHashTable[i];
+
+            return v;
+        }
+    }
     /// <summary>Compatibility: 1709 and higher</summary>
     [FieldOffset(0x07A0)] internal readonly UIntPtr64 TelemetryCoverageHeader;
     /// <summary>Compatibility: 1709 and higher</summary>
