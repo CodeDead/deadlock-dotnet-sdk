@@ -367,10 +367,11 @@ public class SafeFileHandleEx : SafeHandleEx
         {nameof(ObjectAddress)}                     : {ObjectAddress} (0x{ObjectAddress:X})
         {nameof(ObjectName)}                        : {ObjectName.v ?? ObjectName.ex?.ToString()}
         {nameof(ProcessId)}                         : {ProcessId}
+        {nameof(ProcessInfo.ParentId)}              : {ProcessInfo.ParentId.v?.ToString() ?? ProcessInfo.ParentId.ex?.ToString() ?? string.Empty}
         {nameof(ProcessInfo.ProcessCommandLine)}    : {ProcessInfo.ProcessCommandLine.v ?? ProcessInfo.ProcessCommandLine.ex?.ToString()}
         {nameof(ProcessInfo.ProcessMainModulePath)} : {ProcessInfo.ProcessMainModulePath.v ?? ProcessInfo.ProcessMainModulePath.ex?.ToString()}
         {nameof(ProcessInfo.ProcessName)}           : {ProcessInfo.ProcessName.v ?? ProcessInfo.ProcessName.ex?.ToString()}
-        {nameof(ProcessInfo.ProcessProtection)}     : {(ProcessInfo.ProcessProtection.v is not null ? (ProcessInfo.ProcessProtection.v.ToString()) : (ProcessInfo.ProcessProtection.ex?.ToString()))}
+        {nameof(ProcessInfo.ProcessProtection)}     : {ProcessInfo.ProcessProtection.v?.ToString() ?? ProcessInfo.ProcessProtection.ex?.ToString() ?? string.Empty}
         {nameof(ExceptionLog)}                      : ...
         " + string.Concat(exLog);
     }
