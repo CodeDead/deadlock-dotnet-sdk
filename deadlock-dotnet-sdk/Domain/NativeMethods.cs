@@ -143,6 +143,7 @@ internal static class NativeMethods
     /// <returns>
     ///     A list of SafeFileHandleEx objects. When requested, handles for non-file or unidentified objects will be included with file-specific properties nulled.
     /// </returns>
+    /// <remarks>This method should remain internal because its parameters may change at any time. A public API should wrap this method.</remarks>
     /// TODO: contemplate fuzzy search benefits. See FuzzySharp (https://www.nuget.org/packages/FuzzySharp | https://github.com/JakeBayer/FuzzySharp)
     internal static List<SafeFileHandleEx> FindLockingHandles(string query, HandlesFilter filter = HandlesFilter.FilesOnly)
     {
@@ -169,6 +170,7 @@ internal static class NativeMethods
 
         return safeHandles;
 
+        // TODO: review keep() for accuracy. Is field 'keep' really being set to false when needed?
         bool keep(SafeFileHandleEx h)
         {
             bool keep = false;
