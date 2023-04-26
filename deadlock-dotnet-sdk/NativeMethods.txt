@@ -32,6 +32,7 @@ GetFileType
 GetFinalPathNameByHandle
 GetHandleInformation
 IsWow64Process
+IsWow64Process2
 LookupPrivilegeValue
 NtQueryInformationProcess
 NtQueryObject
