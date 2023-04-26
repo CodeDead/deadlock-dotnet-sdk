@@ -15,11 +15,9 @@ partial struct PEB
         this = pbi.GetPeb();
     }
 
-    public PEB_Ex GetPebEx(uint processId) => new(processId, this);
-
     public bool InheritedAddressSpace => (BOOLEAN)Reserved1[0];
     public bool ReadImageFileExecOptions => (BOOLEAN)Reserved1[1];
-    public bool BeingDebugged_bool => (BOOLEAN)BeingDebugged;
+    public bool IsBeingDebugged => (BOOLEAN)BeingDebugged;
 
     #region bit field
 

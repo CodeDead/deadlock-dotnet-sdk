@@ -235,7 +235,7 @@ public partial class ProcessInfo
     }
 
     //public bool ProcessIs64Bit { get; } // unused, for now
-    //internal PEB_Ex? PebEx { get; } // Won't need this unless we want to start accessing otherwise unread pointer-type members of the PEB and its children (e.g. PEB_LDR_DATA, CURDIR, et cetera)
+
     /// <summary>
     /// A wrapper for QueryFullProcessImageName, a system function that circumvents 32-bit process limitations when permitted the PROCESS_QUERY_LIMITED_INFORMATION right.
     /// </summary>

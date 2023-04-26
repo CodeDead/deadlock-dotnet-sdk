@@ -91,6 +91,4 @@ public readonly struct PROCESS_BASIC_INFORMATION
             ? throw new Win32Exception()
             : peb;
     }
-
-    public unsafe PEB_Ex GetPebEx() => new(ProcessId, GetPeb());
 }
