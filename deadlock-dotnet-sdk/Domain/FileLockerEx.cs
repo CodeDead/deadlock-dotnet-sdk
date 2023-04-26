@@ -17,7 +17,7 @@ namespace deadlock_dotnet_sdk.Domain
         public HandlesFilter Filter { get; }
 
         public SortByProperty SortByPrimary { get; set; } = SortByProperty.ProcessId;
-        public SortByProperty SortBySecondary { get; set; } = SortByProperty.ObjectProperName;
+        public SortByProperty SortBySecondary { get; set; } = SortByProperty.ObjectRealName;
 
         /// <summary>Used by the user to choose the primary and secondary sortation orders i.e. sort by process id and then by handle value</summary>
         public enum SortByProperty
@@ -38,7 +38,7 @@ namespace deadlock_dotnet_sdk.Domain
             /// Differs from ObjectName for types {File, (Registry) Key}
             /// </summary>
             /// TODO: get 'real' paths e.g. "\REGISTRY\MACHINE" -> "HKLM"
-            ObjectProperName,
+            ObjectRealName,
             ObjectAddress,
             ProcessId
         }
@@ -63,7 +63,7 @@ namespace deadlock_dotnet_sdk.Domain
                             case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
                             case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
                             case SortByProperty.ObjectOriginalName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
-                            case SortByProperty.ObjectProperName: throw new NotImplementedException("ObjectTrueName is not yet implemented!");
+                            case SortByProperty.ObjectRealName: throw new NotImplementedException("ObjectTrueName is not yet implemented!");
                             case SortByProperty.ObjectAddress: return BitConverter.GetBytes((ulong)h.ObjectAddress);
                             case SortByProperty.ProcessId: return BitConverter.GetBytes(h.ProcessId);
                             default: goto case SortByProperty.ProcessId;
@@ -82,7 +82,7 @@ namespace deadlock_dotnet_sdk.Domain
                             case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
                             case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
                             case SortByProperty.ObjectOriginalName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
-                            case SortByProperty.ObjectProperName: throw new NotImplementedException("ObjectTrueName is not yet implemented!");
+                            case SortByProperty.ObjectRealName: throw new NotImplementedException("ObjectTrueName is not yet implemented!");
                             case SortByProperty.ObjectAddress: return BitConverter.GetBytes((ulong)h.ObjectAddress);
                             case SortByProperty.ProcessId: return BitConverter.GetBytes(h.ProcessId);
                             default: goto case SortByProperty.ProcessId;

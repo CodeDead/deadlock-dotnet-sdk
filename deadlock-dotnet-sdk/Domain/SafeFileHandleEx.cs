@@ -67,6 +67,11 @@ public class SafeFileHandleEx : SafeHandleEx
                     : (isFileHandle = (null, new Exception("Failed to determine if this handle's object is a file/directory; Failed to query the object's type.", HandleObjectType.ex)))
                 : isFileHandle;
 
+    /// <summary>
+    /// If the handle object's Type is "File", the type of the File object<br/>
+    /// -OR-<br/>
+    /// An exception if the P/Invoke operation failed or the object's Type is not "File".
+    /// </summary>
     public (FileType? v, Exception? ex) FileHandleType
     {
         get
