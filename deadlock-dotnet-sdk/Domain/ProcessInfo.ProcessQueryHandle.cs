@@ -39,5 +39,7 @@ public partial class ProcessInfo
             var h = OpenProcess_SafeHandle(accessRights, false, (uint)processId);
             return h is null ? throw new Win32Exception() : (new(h, accessRights));
         }
+
+        public static implicit operator SafeProcessHandle(ProcessQueryHandle v) => v.Handle;
     }
 }
