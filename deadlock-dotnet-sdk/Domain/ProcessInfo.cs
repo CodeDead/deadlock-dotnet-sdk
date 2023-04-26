@@ -165,8 +165,7 @@ public partial class ProcessInfo
                 {
                     // Before assuming anything, try without PROCESS_VM_READ. Without it, we don't need Debug privilege, but the PEB and all of its recursive members (e.g. Command Line) will be unavailable.
                     const string exAccessMsg = exMsg + " The requested permissions were denied.";
-                    string exPermsFirst = NewLine + "First attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) + ", " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ);
-                    canGetReadMemoryHandle = false;
+                    string exPermsFirst = Env.NewLine + "First attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) + ", " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ);
 
                     try
                     {
@@ -175,13 +174,11 @@ public partial class ProcessInfo
                     catch (Win32Exception ex2) when ((Win32ErrorCode)ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
                     {
                         // Debug Mode could not be enabled? Was SE_DEBUG_NAME denied to user or is current process not elevated?
-                        canGetQueryLimitedInfoHandle = false;
-                        string exPermsSecond = NewLine + "Second attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
+                        string exPermsSecond = Env.NewLine + "Second attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
                         return (null, new UnauthorizedAccessException(exAccessMsg + exPermsFirst + exPermsSecond, ex2));
                     }
                     catch (Exception ex2)
                     {
-                        canGetQueryLimitedInfoHandle = false;
                         return (null, new AggregateException(exMsg + " Permissions were denied and an unknown error occurred.", new Exception[] { ex, ex2 }));
                     }
                 }
@@ -243,7 +240,7 @@ public partial class ProcessInfo
             {
                 return ProcessProtection.v?.Type switch
                 {
-                    PsProtectedTypeNone or PsProtectedTypeProtectedLight => processCommandLine = TryGetProcessCommandLine(ProcessId),
+                    PsProtectedTypeNone or PsProtectedTypeProtectedLight => processCommandLine = TryGetProcessCommandLine(),
                     PsProtectedTypeProtected => processCommandLine = (null, new UnauthorizedAccessException("ProcessCommandLine cannot be queried or copied; the process's Protection level prevents access to the process's command line.")),
                     _ => processCommandLine = (null, new InvalidOperationException("ProcessCommandLine cannot be queried or copied; Failed to query the process's protection."))
                 };
@@ -383,10 +380,11 @@ public partial class ProcessInfo
         }
     }
 
-    private static (string? v, Exception? ex) TryGetProcessCommandLine(int processId)
+    private (string? v, Exception? ex) TryGetProcessCommandLine()
     {
-        if (processId == Environment.ProcessId)
-            return (CommandLine, null);
+        if (ProcessId == Env.ProcessId)
+            return (Env.CommandLine, null);
+
         try
         {
             if (!IsDebugModeEnabled())
@@ -394,16 +392,16 @@ public partial class ProcessInfo
         }
         catch (Exception ex)
         {
-            Trace.WriteLine("Failed check if Debug Mode was enabled or failed to enable Debug Mode for the current process." + NewLine + ex.ToString());
+            Trace.WriteLine("Failed check if Debug Mode was enabled or failed to enable Debug Mode for the current process." + Env.NewLine + ex.ToString());
         }
 
-        using SafeProcessHandle hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, (uint)processId);
+        using SafeProcessHandle hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, (uint)ProcessId);
         if (hProcess.IsInvalid)
             return (null, new Win32Exception());
 
         try
         {
-            return (GetProcessCommandLine(hProcess), null);
+            return (GetProcessCommandLine(hProcess, Is32BitEmulatedProcess), null);
         }
         catch (Exception ex)
         {
@@ -438,16 +436,17 @@ public partial class ProcessInfo
     ///     -OR-
     ///     </exception>
     /// <exception cref="OutOfMemoryException">ReAllocHGlobal received a null pointer, but didn't check the error code. This is not a real OutOfMemoryException</exception>
-    private unsafe static string GetProcessCommandLine(SafeProcessHandle hProcess)
+    private unsafe static string GetProcessCommandLine(SafeProcessHandle hProcess, (bool? v, Exception? ex) isWow64Process)
     {
         if (hProcess.IsInvalid)
             throw new ArgumentException("The provided process handle is invalid.", paramName: nameof(hProcess));
 
-        if (!IsWow64Process(hProcess, out BOOL targetIs32BitProcess))
-            throw new Exception("Failed to determine target process is running under WOW. See InnerException.", new Win32Exception());
+        if (isWow64Process.ex is not null)
+            throw new Exception("Failed to determine target process is running under WOW. See InnerException.", isWow64Process.ex);
 
-        bool weAre32BitAndTheyAre64Bit = !Is64BitProcess && !targetIs32BitProcess;
-        bool weAre64BitAndTheyAre32Bit = Is64BitProcess && targetIs32BitProcess;
+        bool targetIs32BitProcess = isWow64Process.v is true;
+        bool weAre32BitAndTheyAre64Bit = !Env.Is64BitProcess && !targetIs32BitProcess;
+        bool weAre64BitAndTheyAre32Bit = Env.Is64BitProcess && targetIs32BitProcess;
         NTSTATUS status;
         uint returnLength = 0;
         ulong bytesRead;
