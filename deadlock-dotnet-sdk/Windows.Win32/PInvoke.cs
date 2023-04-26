@@ -9,7 +9,6 @@ using Windows.Win32.Security;
 using Windows.Win32.System.Threading;
 using MemInfo32 = Windows.Win32.System.Memory.MEMORY_BASIC_INFORMATION32;
 using MemInfo64 = Windows.Win32.System.Memory.MEMORY_BASIC_INFORMATION64;
-using NTSTATUS_plus = PInvoke.NTSTATUS;
 
 namespace Windows.Win32;
 
@@ -79,7 +78,7 @@ static partial class PInvoke
     [DllImport("ntdll.dll", ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [SupportedOSPlatform("windows5.0")]
-    internal unsafe static extern NTSTATUS_plus NtDuplicateObject(
+    internal unsafe static extern NTSTATUS NtDuplicateObject(
         HANDLE SourceProcessHandle,
         HANDLE SourceHandle,
         [Optional] HANDLE TargetProcessHandle,
@@ -145,7 +144,7 @@ static partial class PInvoke
     }
 
     [DllImport("ntdll.dll", ExactSpelling = true, EntryPoint = "NtWow64QueryInformationProcess64")]
-    internal static extern unsafe NTSTATUS_plus NtWow64QueryInformationProcess64(
+    internal static extern unsafe NTSTATUS NtWow64QueryInformationProcess64(
         [In] SafeProcessHandle ProcessHandle,
         PROCESSINFOCLASS ProcessInformationClass,
         [Out] void* ProcessInformation,
@@ -154,7 +153,7 @@ static partial class PInvoke
     );
 
     [DllImport("ntdll.dll", ExactSpelling = true, EntryPoint = "NtWow64ReadVirtualMemory64")]
-    internal static extern unsafe NTSTATUS_plus NtWow64ReadVirtualMemory64(
+    internal static extern unsafe NTSTATUS NtWow64ReadVirtualMemory64(
         [In] SafeProcessHandle ProcessHandle,
         [In] UIntPtr64 BaseAddress,
         [Out] void* Buffer,
