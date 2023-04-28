@@ -24,6 +24,7 @@ namespace deadlock_dotnet_sdk.Domain;
 public class SafeFileHandleEx : SafeHandleEx
 {
     private (bool? v, Exception? ex) isFileHandle;
+    private (bool? v, Exception? ex) isFilePathRemote;
     private (FileType? v, Exception? ex) fileHandleType;
     private (string? v, Exception? ex) fileNameInfo;
     private (string? v, Exception? ex) fileFullPath;
@@ -68,6 +69,52 @@ public class SafeFileHandleEx : SafeHandleEx
                 : isFileHandle;
 
     /// <summary>
+    /// TRUE if the file object's path is a network path i.e. SMB2 network share. FALSE if the file was opened via a local disk path.
+    /// -OR-
+    /// Exception encountered because GetFileInformationByHandleEx failed
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         GetFileInformationByHandleEx is another poorly documented win32
+    ///         function due to the variety of parameters and conditional return
+    ///         values. When <see cref="FILE_INFO_BY_HANDLE_CLASS.FileRemoteProtocolInfo"/>
+    ///         is passed to the function, it will try to write a
+    ///         <see cref="FILE_REMOTE_PROTOCOL_INFO"/> to the supplied buffer.
+    ///         If the file handle's path is not remote, then the function
+    ///         returns <see cref="Win32ErrorCode.ERROR_INVALID_PARAMETER"/>.
+    ///     </para>
+    ///     <para>
+    ///         For the particulars of GetFileInformationByHandleEx, see...<br/>
+    ///         * <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex">GetFileInformationByHandleEx function (winbase.h) | Microsoft Learn</seealso><br/>
+    ///         * <seealso href="https://stackoverflow.com/a/70466900/14894786">c++ - Detect if file is open locally or over share - Stack Overflow</seealso><br/>
+    ///         * <seealso href="https://web.archive.org/web/20190123140707/https://blogs.msdn.microsoft.com/winsdk/2015/06/04/filesystemwatcher-fencingpart-1/">FileSystemWatcher Fencing(Part 1) – Windows SDK Support Team Blog</seealso><br/>
+    ///     </para>
+    /// </remarks>
+    public (bool? v, Exception? ex) IsFilePathRemote
+    {
+        get
+        {
+            if (isFilePathRemote is (null, null))
+            {
+                Win32ErrorCode err;
+                FILE_REMOTE_PROTOCOL_INFO info;
+                unsafe
+                {
+                    return GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileRemoteProtocolInfo, &info, (uint)Marshal.SizeOf(info))
+                        ? (isFilePathRemote = (true, null))
+                        : (err = (Win32ErrorCode)Marshal.GetLastPInvokeError()) is Win32ErrorCode.ERROR_INVALID_PARAMETER
+                            ? (isFilePathRemote = (false, null))
+                            : (isFilePathRemote = (null, new Win32Exception(err)));
+                }
+            }
+            else
+            {
+                return isFilePathRemote;
+            }
+        }
+    }
+
+    /// <summary>
     /// If the handle object's Type is "File", the type of the File object<br/>
     /// -OR-<br/>
     /// An exception if the P/Invoke operation failed or the object's Type is not "File".
@@ -76,13 +123,18 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         get
         {
-            if (fileHandleType == default)
+            if (fileHandleType is (null, null))
             {
+                const string unableErr = "Unable to query FileHandleType; ";
+                if (ProcessInfo.ProcessProtection.ex is not null)
+                    return (null, new NullReferenceException(unableErr + "Failed to query the process's protection level."));
+                if (ProcessInfo.ProcessProtection.ex is not null)
+                    return (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits this operation."));
                 if (IsFileHandle.v is not true)
-                    return (null, new InvalidOperationException("Unable to query File handle type; This operation is only valid on File handles."));
+                    return (null, new InvalidOperationException(unableErr + "This operation is only valid on File handles."));
 
                 FileType type = (FileType)GetFileType(handle);
-                var err = new Win32Exception();
+                Win32Exception err = new();
                 return err.ErrorCode is 0 /* success */
                     ? fileHandleType = (type, null)
                     : fileHandleType = (null, err);
@@ -100,11 +152,13 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (fileNameInfo == default)
             {
+                const string unableErr = "Unable to query FileNameInfo; ";
+                if (ProcessInfo.ProcessProtection.ex is not null)
+                    return fileNameInfo = (null, new NullReferenceException(unableErr + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
+                if (ProcessInfo.ProcessProtection.v?.Type is not PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone)
+                    return fileNameInfo = (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits querying a file handle's FILE_NAME_INFO."));
                 if (FileHandleType.v is not FileType.Disk)
-                    return (null, new InvalidOperationException("FileNameInfo can only be queried for disk-type file handles."));
-                //TODO: check if process protection inhibits function
-                //if (ProcessProtection.ex is not null)
-                //if (ProcessProtection.v?.Value.Type )
+                    return (null, new InvalidOperationException(unableErr + "FileNameInfo can only be queried for disk-type file handles."));
 
                 /* Get fni.FileNameLength */
                 FILE_NAME_INFO fni = default;
