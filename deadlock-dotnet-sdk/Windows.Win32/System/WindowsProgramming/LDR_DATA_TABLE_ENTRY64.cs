@@ -7,7 +7,7 @@ namespace Windows.Win32.System.WindowsProgramming;
 /// https://web.archive.org/web/https://geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntldr/ldr_data_table_entry.htm
 /// </summary>
 [StructLayout(LayoutKind.Explicit)]
-internal struct LDR_DATA_TABLE_ENTRY64
+public struct LDR_DATA_TABLE_ENTRY64
 {
     /// <summary>3.10 and higher</summary>
     [FieldOffset(0x00)] internal readonly LIST_ENTRY64 InLoadOrderLinks;

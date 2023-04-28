@@ -1,6 +1,6 @@
 namespace Windows.Win32.System.Kernel;
 
-internal struct KAFFINITY32
+public struct KAFFINITY32
 {
     public uint Value;
 

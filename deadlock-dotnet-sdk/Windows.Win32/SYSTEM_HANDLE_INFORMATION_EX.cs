@@ -50,7 +50,7 @@ public readonly unsafe struct SYSTEM_HANDLE_INFORMATION_EX
     /// <summary>
     /// DEBUGGING | Test for memory access. System.AccessViolationException due to these values being in a protected memory range is a problem.
     /// </summary>
-    internal void CheckAccess()
+    public void CheckAccess()
     {
         var tmp = AsSpan();
 

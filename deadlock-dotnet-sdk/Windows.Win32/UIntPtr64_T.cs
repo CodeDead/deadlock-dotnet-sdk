@@ -1,7 +1,8 @@
+using System.Diagnostics.Contracts;
 namespace Windows.Win32;
 
 /// <inheritdoc cref="UIntPtr64"/>
-internal struct UIntPtr64<T> where T : unmanaged
+public struct UIntPtr64<T> where T : unmanaged
 {
     public ulong Value;
 

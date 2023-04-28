@@ -7,16 +7,16 @@ namespace Windows.Win32.System.Kernel;
 /// <para><see href="https://web.archive.org/web/20210826002650/https://geoffchappell.com/studies/windows/km/ntoskrnl/inc/shared/ntdef/rtl_balanced_node.htm"/></para>
 /// </summary>
 [StructLayout(LayoutKind.Explicit, Size = 0x0C)]
-internal unsafe struct RTL_BALANCED_NODE32
+public unsafe struct RTL_BALANCED_NODE32
 {
-    [FieldOffset(0x00)] internal fixed uint _Children[2];
-    internal UIntPtr32<RTL_BALANCED_NODE32>[] Children => new UIntPtr32<RTL_BALANCED_NODE32>[] { _Children[0], _Children[1] };
-    [FieldOffset(0x00)] internal UIntPtr32<RTL_BALANCED_NODE32> Left;
-    [FieldOffset(0x04)] internal UIntPtr32<RTL_BALANCED_NODE32> Right;
+    [FieldOffset(0x00)] private fixed uint _Children[2];
+    public UIntPtr32<RTL_BALANCED_NODE32>[] Children => new UIntPtr32<RTL_BALANCED_NODE32>[] { _Children[0], _Children[1] };
+    [FieldOffset(0x00)] public UIntPtr32<RTL_BALANCED_NODE32> Left;
+    [FieldOffset(0x04)] public UIntPtr32<RTL_BALANCED_NODE32> Right;
 
-    [FieldOffset(0x08)] internal UIntPtr32 ParentValue;
+    [FieldOffset(0x08)] public UIntPtr32 ParentValue;
     /// <summary>applies if the node is in a Red Black tree</summary>
-    internal byte Red => (byte)(ParentValue & 0b1);
+    public byte Red => (byte)(ParentValue & 0b1);
     /// <summary>applies if the node is in an AVL tree</summary>
-    internal byte Balance => (byte)((ParentValue >> 1) & 0b11);
+    public byte Balance => (byte)((ParentValue >> 1) & 0b11);
 }

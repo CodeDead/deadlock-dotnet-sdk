@@ -36,7 +36,7 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
     /// <summary>ULONG_PTR, cast to HANDLE, int, or uint</summary>
     public nuint UniqueProcessId { get; }
     /// <summary>ULONG_PTR, cast to HANDLE</summary>
-    internal HANDLE HandleValue { get; }
+    public HANDLE HandleValue { get; }
     /// <summary>Get the HandleValue as a SafeObjectHandle. Closing this SafeObjectHandle does *not* close the source handle.</summary>
     public SafeObjectHandle GetSafeHandle() => new(HandleValue, false);
     /// <summary>This is a bitwise "Flags" data type.
@@ -78,7 +78,7 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
             : throw new NTStatusException(status);
     }
 
-    internal unsafe HANDLE_FLAGS GetHandleInfo()
+    public unsafe HANDLE_FLAGS GetHandleInfo()
     {
         try
         {

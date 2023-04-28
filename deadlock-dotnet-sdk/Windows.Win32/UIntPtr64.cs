@@ -3,7 +3,7 @@ namespace Windows.Win32;
 /// <summary>
 /// A stand-in for 64-bit pointers in a 32-bit runtime.
 /// </summary>
-internal struct UIntPtr64
+public struct UIntPtr64
 {
     public ulong Value;
 

@@ -78,7 +78,7 @@ static partial class PInvoke
     [DllImport("ntdll.dll", ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [SupportedOSPlatform("windows5.0")]
-    internal unsafe static extern NTSTATUS NtDuplicateObject(
+    public unsafe static extern NTSTATUS NtDuplicateObject(
         HANDLE SourceProcessHandle,
         HANDLE SourceHandle,
         [Optional] HANDLE TargetProcessHandle,
@@ -92,7 +92,7 @@ static partial class PInvoke
     /// <inheritdoc cref="VirtualQuery(void*, void*, SIZE_T)alQuery(`void*, void*, SIZE_T)"/>
     /// <remarks>This is currently unused because we don't need this much information about a handle's owning process. However, it would be a shame to remove it entirely.</remarks>
     // TODO: split off into 'C#: Reading 32-bit process's memory from 64-bit and vice versa' project
-    internal static unsafe (MemInfo32 memInfo32, MemInfo64 memInfo64) VirtualQuery(nuint lpAddress)
+    public static unsafe (MemInfo32 memInfo32, MemInfo64 memInfo64) VirtualQuery(nuint lpAddress)
     {
         SIZE_T bufferSize = default;
         int size64 = default;
@@ -144,7 +144,7 @@ static partial class PInvoke
     }
 
     [DllImport("ntdll.dll", ExactSpelling = true, EntryPoint = "NtWow64QueryInformationProcess64")]
-    internal static extern unsafe NTSTATUS NtWow64QueryInformationProcess64(
+    public static extern unsafe NTSTATUS NtWow64QueryInformationProcess64(
         [In] SafeProcessHandle ProcessHandle,
         PROCESSINFOCLASS ProcessInformationClass,
         [Out] void* ProcessInformation,
@@ -153,7 +153,7 @@ static partial class PInvoke
     );
 
     [DllImport("ntdll.dll", ExactSpelling = true, EntryPoint = "NtWow64ReadVirtualMemory64")]
-    internal static extern unsafe NTSTATUS NtWow64ReadVirtualMemory64(
+    public static extern unsafe NTSTATUS NtWow64ReadVirtualMemory64(
         [In] SafeProcessHandle ProcessHandle,
         [In] UIntPtr64 BaseAddress,
         [Out] void* Buffer,
@@ -164,7 +164,7 @@ static partial class PInvoke
     /// <inheritdoc cref="OpenProcess(PROCESS_ACCESS_RIGHTS, BOOL, uint)"/>
     /// <returns>A SafeProcessHandle to the </returns>
     [SupportedOSPlatform("windows5.1.2600")]
-    internal static unsafe SafeProcessHandle OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, uint dwProcessId)
+    public static unsafe SafeProcessHandle OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, uint dwProcessId)
     {
         HANDLE __result = OpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId);
         return new SafeProcessHandle(__result, ownsHandle: true);
@@ -200,13 +200,13 @@ static partial class PInvoke
     /// <remarks><inheritdoc cref="PrivilegeCheck(HANDLE, PRIVILEGE_SET*, int*)"/><br/>
     /// An access token contains a list of the privileges held by the account associated with the token. These privileges can be enabled or disabled; most are disabled by default. The PrivilegeCheck function checks only for enabled privileges. To get a list of all the enabled and disabled privileges held by an access token, call the GetTokenInformation function. To enable or disable a set of privileges in an access token, call the AdjustTokenPrivileges function.</remarks>
     /// <inheritdoc cref="PrivilegeCheck(HANDLE, Security.PRIVILEGE_SET*, int*)"/>
-    internal static bool PrivilegeCheck(SafeHandle ClientToken, ref PRIVILEGE_SET RequiredPrivileges)
+    public static bool PrivilegeCheck(SafeHandle ClientToken, ref PRIVILEGE_SET RequiredPrivileges)
         => !PrivilegeCheck(ClientToken, ref RequiredPrivileges, out int pfResult) ? throw new Win32Exception() : (BOOL)pfResult;
 
     /// <returns><inheritdoc cref="OpenProcessToken(HANDLE, TOKEN_ACCESS_MASK, HANDLE*)" path="/param[@name='TokenHandle']"/></returns>
     /// <inheritdoc cref="OpenProcessToken(SafeHandle, TOKEN_ACCESS_MASK, out SafeFileHandle)"/>
-    internal static SafeFileHandle OpenProcessToken(SafeFileHandle ProcessHandle, TOKEN_ACCESS_MASK DesiredAccess)
+    public static SafeFileHandle OpenProcessToken(SafeFileHandle ProcessHandle, TOKEN_ACCESS_MASK DesiredAccess)
         => OpenProcessToken(ProcessHandle, DesiredAccess, out SafeFileHandle TokenHandle) ? TokenHandle : throw new Win32Exception();
 
-    internal static HANDLE_FLAGS GetHandleInformation(SafeHandle hObject) => (HANDLE_FLAGS)(GetHandleInformation(hObject, out uint flags) ? flags : throw new Win32Exception());
+    public static HANDLE_FLAGS GetHandleInformation(SafeHandle hObject) => (HANDLE_FLAGS)(GetHandleInformation(hObject, out uint flags) ? flags : throw new Win32Exception());
 }

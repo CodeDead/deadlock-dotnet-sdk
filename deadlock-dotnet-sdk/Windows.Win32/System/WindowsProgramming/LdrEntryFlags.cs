@@ -7,7 +7,7 @@ namespace Windows.Win32.System.WindowsProgramming;
 /// Flags deprecated before Windows 7 are not included in this enum
 /// </summary>
 [Flags]
-internal enum LdrEntryFlags : uint
+public enum LdrEntryFlags : uint
 {
     PackagedBinary = 0x1U,
     /// <summary>3.51 to 6.1 (Win7)</summary>

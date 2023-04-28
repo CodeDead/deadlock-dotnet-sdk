@@ -3,7 +3,7 @@ namespace Windows.Win32;
 /// <summary>
 /// A stand-in for 32-bit pointers in a 64-bit runtime.
 /// </summary>
-internal struct UIntPtr32
+public struct UIntPtr32
 {
     public uint Value;
 
@@ -13,7 +13,7 @@ internal struct UIntPtr32
     public unsafe static explicit operator void*(UIntPtr32 v) => (void*)v.Value;
 }
 
-internal struct UIntPtr32<T> where T : unmanaged
+public struct UIntPtr32<T> where T : unmanaged
 {
     public uint Value;
 

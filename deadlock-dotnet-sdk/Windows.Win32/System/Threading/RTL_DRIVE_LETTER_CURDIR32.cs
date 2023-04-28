@@ -5,7 +5,7 @@ using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace Windows.Win32.System.Threading;
 
-internal partial struct RTL_USER_PROCESS_PARAMETERS32
+public partial struct RTL_USER_PROCESS_PARAMETERS32
 {
     /// <summary>
     /// https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/rtl_drive_letter_curdir.htm

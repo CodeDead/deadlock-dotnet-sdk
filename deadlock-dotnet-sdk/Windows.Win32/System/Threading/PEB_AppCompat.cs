@@ -7,7 +7,7 @@ namespace Windows.Win32.System.Threading;
 /// in a <c>&lt;FLAG></c> tag whose TYPE attribute is KERNEL or USER, respectively.
 /// </summary>
 [Flags]
-internal enum PEB_AppCompat : ulong
+public enum PEB_AppCompat : ulong
 {
     KACF_OLDGETSHORTPATHNAME = 1,
     KACF_VERSIONLIE_NOT_USED = 1 << 1,

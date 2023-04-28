@@ -11,7 +11,7 @@ namespace Windows.Win32.System.Threading;
 
 public partial class ProcessEnvironmentBlock
 {
-    internal unsafe ProcessEnvironmentBlock(PEB32 peb32)
+    public unsafe ProcessEnvironmentBlock(PEB32 peb32)
     {
         ActivationContextData = (peb32.ActivationContextData, null);
         ActiveProcessAffinityMask = (peb32.ActiveProcessAffinityMask, null);
@@ -101,7 +101,7 @@ public partial class ProcessEnvironmentBlock
         WerShipAssertPtr = (peb32.WerShipAssertPtr, null);
     }
 
-    internal unsafe ProcessEnvironmentBlock(PEB64 peb64)
+    public unsafe ProcessEnvironmentBlock(PEB64 peb64)
     {
         ActivationContextData = (null, peb64.ActivationContextData);
         ActiveProcessAffinityMask = (null, peb64.ActiveProcessAffinityMask);
@@ -193,26 +193,26 @@ public partial class ProcessEnvironmentBlock
 
     #region INITIAL_PEB
     /// <summary>Compatibility: all</summary>
-    internal readonly BOOLEAN InheritedAddressSpace;
+    public readonly BOOLEAN InheritedAddressSpace;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly BOOLEAN ReadImageFileExecOptions;
+    public readonly BOOLEAN ReadImageFileExecOptions;
     /// <summary>
-    /// Indicates whether the specified process is currently being debugged. The <b>PEB</b> structure, however, is an internal operating-system structure whose layout may change in the future. It is best to use the <a href="https://docs.microsoft.com/windows/desktop/api/debugapi/nf-debugapi-checkremotedebuggerpresent">CheckRemoteDebuggerPresent</a> function instead.<br/>
+    /// Indicates whether the specified process is currently being debugged. The <b>PEB</b> structure, however, is an public operating-system structure whose layout may change in the future. It is best to use the <a href="https://docs.microsoft.com/windows/desktop/api/debugapi/nf-debugapi-checkremotedebuggerpresent">CheckRemoteDebuggerPresent</a> function instead.<br/>
     /// Compatibility: 3.51 and higher
     /// </summary>
-    internal readonly BOOLEAN BeingDebugged;
+    private readonly BOOLEAN BeingDebugged;
     public bool IsBeingDebugged => BeingDebugged;
     /// <summary>Compatibility: late 5.2 and higher</summary>
-    internal readonly PEB_BitField BitField;
+    public readonly PEB_BitField BitField;
     /// <summary>Compatibility: all</summary>
-    internal readonly (HANDLE32? w32, HANDLE64? w64) Mutant;
+    public readonly (HANDLE32? w32, HANDLE64? w64) Mutant;
     #endregion INITIAL_PEB
 
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) ImageBaseAddress;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) ImageBaseAddress;
     /// <summary>Compatibility: all<br/>
     /// A pointer to a <a href="https://docs.microsoft.com/windows/desktop/api/winternl/ns-winternl-peb_ldr_data">PEB_LDR_DATA</a> structure that contains information about the loaded modules for the process.</summary>
-    internal readonly unsafe (UIntPtr32<PEB_LDR_DATA32>? w32, UIntPtr64<PEB_LDR_DATA64>? w64) Ldr;
+    public readonly unsafe (UIntPtr32<PEB_LDR_DATA32>? w32, UIntPtr64<PEB_LDR_DATA64>? w64) Ldr;
 
     /// <summary>
     /// Pass a SafeProcessHandle with PROCESS_VM_READ to copy the process's LoaderData from its memory.
@@ -276,7 +276,7 @@ public partial class ProcessEnvironmentBlock
 
     /// <summary>Compatibility: All<br/>
     /// A pointer to an <a href="https://docs.microsoft.com/windows/desktop/api/winternl/ns-winternl-rtl_user_process_parameters">RTL_USER_PROCESS_PARAMETERS</a> structure that contains process parameter information such as the command line.</summary>
-    internal readonly unsafe (UIntPtr32<RTL_USER_PROCESS_PARAMETERS32>? w32, UIntPtr64<RTL_USER_PROCESS_PARAMETERS64>? w64) ProcessParameters;
+    public readonly unsafe (UIntPtr32<RTL_USER_PROCESS_PARAMETERS32>? w32, UIntPtr64<RTL_USER_PROCESS_PARAMETERS64>? w64) ProcessParameters;
 
     /// <summary>
     /// Using a SafeProcessHandle with PROCESS_READ_VM access, copy the target process's 32-bit or 64-bit RTL_USER_PROCESS_PARAMETERS data from its memory.
@@ -341,34 +341,34 @@ public partial class ProcessEnvironmentBlock
 
     /// <summary>Compatibility: all<br/>
     /// "SubSystem" refers to WoW64, Posix (via PSXDLL.DLL), or WSL. This stores the per-process data for the relevant subsystem.<br/></summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) SubSystemData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) SubSystemData;
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) ProcessHeap;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) ProcessHeap;
 
     /// <summary>Compatibility: 5.1 and higher</summary>
-    internal readonly (UIntPtr32<RTL_CRITICAL_SECTION32>? w32, UIntPtr64<RTL_CRITICAL_SECTION64>? w64) FastPebLock;
+    public readonly (UIntPtr32<RTL_CRITICAL_SECTION32>? w32, UIntPtr64<RTL_CRITICAL_SECTION64>? w64) FastPebLock;
     /// <summary>Compatibility: late 5.2 and higher</summary>
-    internal readonly unsafe (UIntPtr32? w32, UIntPtr64? w64) AtlThunkSListPtr;
+    public readonly unsafe (UIntPtr32? w32, UIntPtr64? w64) AtlThunkSListPtr;
     /// <summary>Compatibility: 6.0 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) IFEOKey;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) IFEOKey;
     /// <summary>Compatibility: 6.0 and higher</summary>
-    internal readonly PEB_CrossProcess CrossProcessFlags;
+    public readonly PEB_CrossProcess CrossProcessFlags;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) KernelCallBackTable;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) KernelCallBackTable;
     /// <summary>Compatibility: 6.0 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) UserSharedInfoPtr;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) UserSharedInfoPtr;
     /// <summary>Compatibility: late 5.1; 6.1 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) AtlThunkSListPtr32;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) AtlThunkSListPtr32;
 
     /// <summary>Compatibility: 6.1 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) ApiSetMap;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) ApiSetMap;
 
     /// <summary>Compatibility: all</summary>
-    internal readonly uint TlsExpansionCounter;
+    public readonly uint TlsExpansionCounter;
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) TlsBitmap;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) TlsBitmap;
     /// <summary>Compatibility: all</summary>
-    internal readonly TlsBitmapBitsData TlsBitmapBits;
+    public readonly TlsBitmapBitsData TlsBitmapBits;
     public readonly struct TlsBitmapBitsData
     {
         /// <summary>
@@ -388,168 +388,168 @@ public partial class ProcessEnvironmentBlock
     }
 
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) ReadOnlySharedMemoryBase;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) ReadOnlySharedMemoryBase;
     /// <summary>Compatibility: 1703 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) SharedData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) SharedData;
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32<UIntPtr32>? w32, UIntPtr64<UIntPtr64>? w64) ReadOnlyStaticServerData;
+    public readonly (UIntPtr32<UIntPtr32>? w32, UIntPtr64<UIntPtr64>? w64) ReadOnlyStaticServerData;
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) AnsiCodePageData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) AnsiCodePageData;
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) OemCodePageData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) OemCodePageData;
     /// <summary>Compatibility: all</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) UnicodeCaseTableData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) UnicodeCaseTableData;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly uint NumberOfProcessors;
+    public readonly uint NumberOfProcessors;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly uint NtGlobalFlag;
+    public readonly uint NtGlobalFlag;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly long CriticalSectionTimeout;
+    public readonly long CriticalSectionTimeout;
 
     #region Appended for Windows NT 3.51
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) HeapSegmentReserve;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) HeapSegmentReserve;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) HeapSegmentCommit;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) HeapSegmentCommit;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) HeapDeCommitTotalFreeThreshold;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) HeapDeCommitTotalFreeThreshold;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) HeapDeCommitFreeBlockThreshold;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) HeapDeCommitFreeBlockThreshold;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly uint NumberOfHeaps;
+    public readonly uint NumberOfHeaps;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly uint MaximumNumberOfHeaps;
+    public readonly uint MaximumNumberOfHeaps;
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly (UIntPtr32<UIntPtr32>? w32, UIntPtr64<UIntPtr64>? w64) ProcessHeaps;
+    public readonly (UIntPtr32<UIntPtr32>? w32, UIntPtr64<UIntPtr64>? w64) ProcessHeaps;
     #endregion Appended for Windows NT 3.51
 
     #region Appended for Windows NT 4.0
     /// <summary>Compatibility: 3.51 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) GdiSharedHandleTable;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) GdiSharedHandleTable;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) ProcessTarterHelper;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) ProcessTarterHelper;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly uint GdiDCAttributeList;
+    public readonly uint GdiDCAttributeList;
     /// <summary>Compatibility: 5.2 and higher</summary>
-    internal readonly (UIntPtr32<RTL_CRITICAL_SECTION32>? w32, UIntPtr64<RTL_CRITICAL_SECTION64>? w64) LoaderLock;
+    public readonly (UIntPtr32<RTL_CRITICAL_SECTION32>? w32, UIntPtr64<RTL_CRITICAL_SECTION64>? w64) LoaderLock;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly uint OSMajorVersion;
+    public readonly uint OSMajorVersion;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly uint OSMinorVersion;
+    public readonly uint OSMinorVersion;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly ushort OSBuildNumber;
+    public readonly ushort OSBuildNumber;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly ushort OSCSDVersion;
+    public readonly ushort OSCSDVersion;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly uint OSPlatformId;
+    public readonly uint OSPlatformId;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly uint ImageSubsystem;
+    public readonly uint ImageSubsystem;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly uint ImageSubsystemMajorVersion;
+    public readonly uint ImageSubsystemMajorVersion;
     /// <summary>Compatibility: 4.0 and higher</summary>
-    internal readonly uint ImageSubsystemMinorVersion;
+    public readonly uint ImageSubsystemMinorVersion;
     /// <summary>Compatibility: late 6.0 and higher</summary>
-    internal readonly (KAFFINITY32? w32, KAFFINITY64? w64) ActiveProcessAffinityMask;
+    public readonly (KAFFINITY32? w32, KAFFINITY64? w64) ActiveProcessAffinityMask;
     /// <summary>4.0 and higher (x86)</summary>
-    internal uint[] GdiHandleBuffer;
+    public uint[] GdiHandleBuffer;
 
     #endregion Appended for Windows NT 4.0
 
     #region Appended for Windows 2000
     /// <summary>Compatibility: 5.0 and higher<br/>
     /// Not supported. Type: <see cref="PPS_POST_PROCESS_INIT_ROUTINE"/></summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) PostProcessInitRoutine;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) PostProcessInitRoutine;
     /// <summary>Compatibility: 5.0 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) TlsExpansionBitmap;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) TlsExpansionBitmap;
     /// <summary>Compatibility: 5.0 and higher</summary>
-    internal unsafe uint[] TlsExpansionBitmapBits;
+    public unsafe uint[] TlsExpansionBitmapBits;
     /// <summary>Compatibility: 5.0 and higher<br/>
     /// The Terminal Services session identifier associated with the current process.</summary>
     /// <remarks>The <see cref="SessionId"/> is one of the two <see cref="PEB"/> members that Microsoft documented when required to disclose use of internal APIs by so-called middleware.</remarks>
-    internal readonly uint SessionId;
+    public readonly uint SessionId;
     /// <summary>Compatibility: 5.1 and higher</summary>
-    internal readonly PEB_AppCompat AppCompatFlags;
+    public readonly PEB_AppCompat AppCompatFlags;
     /// <summary>Compatibility: 5.1 and higher</summary>
-    internal readonly PEB_AppCompat AppCompatFlagsUser;
+    public readonly PEB_AppCompat AppCompatFlagsUser;
     /// <summary>Compatibility: 5.1 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) pShimData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) pShimData;
     /// <summary>Compatibility: 5.1 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) AppCompatInfo;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) AppCompatInfo;
     /// <summary>Compatibility: 5.1 and higher</summary>
-    internal readonly (UNICODE_STRING32? w32, UNICODE_STRING64? w64) CSDVersion;
+    public readonly (UNICODE_STRING32? w32, UNICODE_STRING64? w64) CSDVersion;
     #endregion Appended for Windows 2000
 
     #region Appended for Windows XP
     /// <summary>Compatibility: 5.1 and higher<br/>
     /// Type: ACTIVATION_CONTEXT_DATA const * (pointer to a constant ACTIVATION_CONTEXT_DATA)</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) ActivationContextData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) ActivationContextData;
     /// <summary>Compatibility: 5.1 and higher
     /// Type: ACTIVATION_CONTEXT_DATA *</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) ProcessAssemblyStorageMap;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) ProcessAssemblyStorageMap;
     /// <summary>Compatibility: 5.1 and higher
     /// Type: ACTIVATION_CONTEXT_DATA const *</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) SystemDefaultActivationContextData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) SystemDefaultActivationContextData;
     /// <summary>Compatibility: 5.1 and higher
     /// Type: ASSEMBLY_STORAGE_MAP *</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) SystemAssemblyStorageMap;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) SystemAssemblyStorageMap;
     /// <summary>Compatibility: 5.1 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) MinimumStackCommit;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) MinimumStackCommit;
     #endregion Appended for Windows XP
 
     #region Appended for Windows Server 2003
     /// <summary>Compatibility: 5.2 to 1809
     /// Type: FLS_CALLBACK_INFO *</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) FlsCallback;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) FlsCallback;
     /// <summary>Compatibility: 5.2 to 1809</summary>
-    internal readonly (LIST_ENTRY32? w32, LIST_ENTRY64? w64) FlatListHead; // 5.2 to 1809
+    public readonly (LIST_ENTRY32? w32, LIST_ENTRY64? w64) FlatListHead; // 5.2 to 1809
     /// <summary>Compatibility: 5.2 to 1809</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) FlsBitmap;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) FlsBitmap;
     /// <summary>Compatibility: 5.2 to 1809</summary>
-    internal uint[] FlsBitmapBits;
+    public uint[] FlsBitmapBits;
     /// <summary>Compatibility: 5.2 to 1809</summary>
-    internal readonly uint FlsHighIndex;
+    public readonly uint FlsHighIndex;
     #endregion Appended for Windows Server 2003
 
     #region Appended for Windows Vista
     /// <summary>Compatibility: 6.0 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) WerRegistrationData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) WerRegistrationData;
     /// <summary>Compatibility: 6.0 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) WerShipAssertPtr;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) WerShipAssertPtr;
     #endregion Appended for Windows Vista
 
     #region Appended for Windows 7
     /// <summary>Compatibility: 6.1 only</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) pContextData;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) pContextData;
     /* internal readonly (UIntPtr32? w32, UIntPtr64? w64) pUnused; */
     /// <summary>Compatibility: 6.1 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) pImageHeaderHash;
-    internal readonly PEB_Tracing TracingFlags;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) pImageHeaderHash;
+    public readonly PEB_Tracing TracingFlags;
     #endregion Appended for Windows 7
 
     #region Appended for Windows 8
     /// <summary>Compatibility: 6.2 and higher</summary>
-    internal readonly ulong CsrServerReadOnlySharedMemoryBase;
+    public readonly ulong CsrServerReadOnlySharedMemoryBase;
     #endregion Appended for Windows 8
 
     #region Appended Later in Windows 10
     /// <summary>Compatibility: 1511 and higher</summary>
-    internal readonly uint TppWorkerpListLock;
+    public readonly uint TppWorkerpListLock;
     /// <summary>Compatibility: 1511 and higher</summary>
-    internal readonly (LIST_ENTRY32? w32, LIST_ENTRY64? w64) TppWorkerList;
+    public readonly (LIST_ENTRY32? w32, LIST_ENTRY64? w64) TppWorkerList;
     /// <summary>Compatibility: 1511 and higher<br/>
-    internal (UIntPtr32[]? w32, UIntPtr64[]? w64) WaitOnAddressHashTable;
+    public (UIntPtr32[]? w32, UIntPtr64[]? w64) WaitOnAddressHashTable;
     /// <summary>Compatibility: 1709 and higher</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) TelemetryCoverageHeader;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) TelemetryCoverageHeader;
     /// <summary>Compatibility: 1709 and higher</summary>
-    internal readonly uint CloudFileFlags;
+    public readonly uint CloudFileFlags;
     /// <summary>Compatibility: 1803 and higher</summary>
-    internal readonly uint CloudFileDiagFlags;
+    public readonly uint CloudFileDiagFlags;
     /// <summary>Compatibility: 1803 and higher</summary>
-    internal readonly byte PlaceholderCompatibilityMode;
+    public readonly byte PlaceholderCompatibilityMode;
     /// <summary>Compatibility: 1803 and higher
     /// Type: LEAP_SECOND_DATA *</summary>
-    internal readonly (UIntPtr32? w32, UIntPtr64? w64) LeapSecondData;
-    internal readonly PEB_LeapSecond LeapSecondFlags;
+    public readonly (UIntPtr32? w32, UIntPtr64? w64) LeapSecondData;
+    public readonly PEB_LeapSecond LeapSecondFlags;
     /// <summary>Compatibility: 1803 and higher</summary>
     /// <remarks>The <see cref="NtGlobalFlag2"/> member is indeed named for being in some sense an extension of the much older <see cref="NtGlobalFlag"/>.
     ///     Each corresponds to a registry value that can be in either or both of two well-known keys.
@@ -566,6 +566,6 @@ public partial class ProcessEnvironmentBlock
     ///     Administrators and programmers are inevitably grateful that Microsoft employees take the time to blog.
     ///     But let's please not overlook that these blogs are not documentation.
     ///     The helpfulness of Microsoft's employees in explaining new features in fast-moving development, and the readiness of occasionally desperate administrators and programmers to latch on to this help, disguises that Microsoft is systematically skipping the work of documenting these features.</remarks>
-    internal readonly uint NtGlobalFlag2;
+    public readonly uint NtGlobalFlag2;
     #endregion Appended Later in Windows 10
 }

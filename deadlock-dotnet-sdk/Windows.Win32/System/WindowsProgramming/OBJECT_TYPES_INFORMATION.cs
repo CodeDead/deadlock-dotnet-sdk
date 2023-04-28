@@ -1,5 +1,5 @@
 namespace Windows.Win32.System.WindowsProgramming;
-struct OBJECT_TYPES_INFORMATION
+public struct OBJECT_TYPES_INFORMATION
 {
     public OBJECT_TYPES_INFORMATION(uint numberOfTypes)
     {

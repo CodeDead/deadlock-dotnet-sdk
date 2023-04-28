@@ -1,6 +1,6 @@
 namespace Windows.Win32.System.Kernel;
 
-internal struct KAFFINITY64
+public struct KAFFINITY64
 {
     public ulong Value;
 

@@ -8,7 +8,7 @@ namespace Windows.Win32.System.Threading;
 
 public class ProcessBasicInformation
 {
-    internal ProcessBasicInformation(PROCESS_BASIC_INFORMATION pbi)
+    public ProcessBasicInformation(PROCESS_BASIC_INFORMATION pbi)
     {
         ExitStatus = pbi.ExitStatus;
         unsafe { PebBaseAddress = Environment.Is64BitProcess ? (null, (ulong)pbi.PebBaseAddress) : ((uint)pbi.PebBaseAddress, null); }
@@ -18,7 +18,7 @@ public class ProcessBasicInformation
         ParentProcessId = pbi.ParentProcessId;
     }
 
-    internal ProcessBasicInformation(PROCESS_BASIC_INFORMATION32 pbi)
+    public ProcessBasicInformation(PROCESS_BASIC_INFORMATION32 pbi)
     {
         ExitStatus = pbi.ExitStatus;
         PebBaseAddress = (pbi.PebBaseAddress, null);
@@ -28,7 +28,7 @@ public class ProcessBasicInformation
         ParentProcessId = pbi.InheritedFromUniqueProcessId;
     }
 
-    internal ProcessBasicInformation(PROCESS_BASIC_INFORMATION64 pbi)
+    public ProcessBasicInformation(PROCESS_BASIC_INFORMATION64 pbi)
     {
         ExitStatus = pbi.ExitStatus;
         PebBaseAddress = (null, pbi.PebBaseAddress);
@@ -38,7 +38,7 @@ public class ProcessBasicInformation
         ParentProcessId = (uint)pbi.InheritedFromUniqueProcessId;
     }
 
-    internal (UIntPtr32<PEB32>? w32, UIntPtr64<PEB64>? w64) PebBaseAddress { get; }
+    public (UIntPtr32<PEB32>? w32, UIntPtr64<PEB64>? w64) PebBaseAddress { get; }
     public ProcessEnvironmentBlock? ProcessEnvironmentBlock { get; private set; }
 
     public NTSTATUS ExitStatus { get; }
@@ -53,7 +53,7 @@ public class ProcessBasicInformation
     /// <exception cref="NullReferenceException">Unable to copy PEB; The 32-bit and 64-bit pointers are both null.</exception>
     /// <exception cref="NTStatusException">NtWow64ReadVirtualMemory failed to copy 64-bit PEB from target process; (native error message)</exception>
     /// <exception cref="Exception">ReadProcessMemory failed; (native error message)</exception>
-    internal unsafe ProcessEnvironmentBlock GetPEB(SafeProcessHandle hProcess)
+    public unsafe ProcessEnvironmentBlock GetPEB(SafeProcessHandle hProcess)
     {
         if (PebBaseAddress is (null, null))
             throw new NullReferenceException("Unable to copy PEB; The 32-bit and 64-bit pointers are both null.");

@@ -4,7 +4,7 @@ namespace Windows.Win32.System.WindowsProgramming;
 /// The generated enum is missing most entries and has ObjectTypeInformation as `1` instead of `2`. Will changing its value prove to be a mistake?
 /// https://geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntobapi_x/object_information_class.htm
 /// </summary>
-enum OBJECT_INFORMATION_CLASS
+public enum OBJECT_INFORMATION_CLASS
 {
     /// <summary>
     /// A <see cref="PUBLIC_OBJECT_BASIC_INFORMATION">PUBLIC_OBJECT_BASIC_INFORMATION</see> structure is supplied.

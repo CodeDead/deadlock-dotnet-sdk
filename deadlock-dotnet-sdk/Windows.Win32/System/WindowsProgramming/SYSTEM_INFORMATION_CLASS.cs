@@ -1,7 +1,7 @@
 namespace Windows.Win32.System.WindowsProgramming;
 
 // generated definition lacks SystemHandleInformation, SystemExtendedHandleInformation
-enum SYSTEM_INFORMATION_CLASS
+public enum SYSTEM_INFORMATION_CLASS
 {
     SystemBasicInformation = 0,
     SystemPerformanceInformation = 2,

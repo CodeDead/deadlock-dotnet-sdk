@@ -5,13 +5,13 @@ using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace Windows.Win32.System.Threading;
 
-internal partial struct RTL_USER_PROCESS_PARAMETERS64
+public partial struct RTL_USER_PROCESS_PARAMETERS64
 {
     /// <summary>
     /// https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/rtl_drive_letter_curdir.htm
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Size = 0x18)]
-    internal struct RTL_DRIVE_LETTER_CURDIR64
+    public struct RTL_DRIVE_LETTER_CURDIR64
     {
         public ushort Flags;
         public ushort Length;

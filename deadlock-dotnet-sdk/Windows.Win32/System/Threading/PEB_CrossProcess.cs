@@ -4,7 +4,7 @@ namespace Windows.Win32.System.Threading;
 /// https://web.archive.org/web/20221204112657/https://geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/peb/crossprocessflags.htm
 /// </summary>
 [Flags]
-internal enum PEB_CrossProcess : uint
+public enum PEB_CrossProcess : uint
 {
     /// <summary>Compatibility: 6.0 and higher</summary>
     ProcessInJob = 1,

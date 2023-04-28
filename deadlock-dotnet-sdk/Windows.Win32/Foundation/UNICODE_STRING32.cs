@@ -11,7 +11,7 @@ namespace Windows.Win32.Foundation;
 /// <para>The MaximumLength is used to indicate the length of Buffer so that if the string is passed to a conversion routine such as RtlAnsiStringToUnicodeString the returned string does not exceed the buffer size.</para>
 /// </remarks>
 [StructLayout(LayoutKind.Sequential, Size = 0x08)]
-internal struct UNICODE_STRING32
+public struct UNICODE_STRING32
 {
     public ushort Length;
     public ushort MaximumLength;

@@ -5,7 +5,7 @@ using Windows.Win32.System.Kernel;
 
 namespace Windows.Win32.System.WindowsProgramming;
 [StructLayout(LayoutKind.Explicit)]
-internal struct LDR_DATA_TABLE_ENTRY32
+public struct LDR_DATA_TABLE_ENTRY32
 {
     /// <summary>3.10 and higher</summary>
     [FieldOffset(0x00)] internal readonly LIST_ENTRY32 InLoadOrderLinks;

@@ -4,7 +4,7 @@ using Windows.Win32.Foundation;
 namespace Windows.Win32.System.Threading;
 
 [StructLayout(LayoutKind.Explicit)]
-internal partial struct RTL_USER_PROCESS_PARAMETERS64
+public partial struct RTL_USER_PROCESS_PARAMETERS64
 {
     [FieldOffset(0x00)] public uint MaximumLength;
     [FieldOffset(0x04)] public uint Length;

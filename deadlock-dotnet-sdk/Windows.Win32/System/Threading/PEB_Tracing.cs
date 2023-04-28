@@ -1,7 +1,7 @@
 namespace Windows.Win32.System.Threading;
 
 [Flags]
-internal enum PEB_Tracing : uint
+public enum PEB_Tracing : uint
 {
     /// <summary>Compatibility: 6.1 and higher</summary>
     HeapTracingEnabled = 1,

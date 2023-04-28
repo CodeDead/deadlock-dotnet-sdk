@@ -5,7 +5,7 @@ namespace Windows.Win32.System.Threading;
 
 /// <inheritdoc cref="RTL_USER_PROCESS_PARAMETERS"/>
 [StructLayout(LayoutKind.Explicit)]
-internal partial struct RTL_USER_PROCESS_PARAMETERS32
+public partial struct RTL_USER_PROCESS_PARAMETERS32
 {
     [FieldOffset(0x00)] public uint MaximumLength;
     [FieldOffset(0x04)] public uint Length;

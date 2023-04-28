@@ -1,5 +1,5 @@
 namespace Windows.Win32.System.WindowsProgramming;
-internal enum LDR_DLL_LOAD_REASON
+public enum LDR_DLL_LOAD_REASON
 {
     LoadReasonStaticDependency,
     LoadReasonStaticForwarderDependency,

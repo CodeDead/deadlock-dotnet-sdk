@@ -8,7 +8,7 @@ namespace Windows.Win32.System.Threading;
 /// <remarks>64-bit struct for interop with 64-bit processes from a 32-bit process<br/>
 /// When running a 64-bit process or when interacting with other 32-bit processes, use <see cref="PROCESS_BASIC_INFORMATION"/></remarks>
 [StructLayout(LayoutKind.Explicit)]
-internal readonly struct PROCESS_BASIC_INFORMATION64
+public readonly struct PROCESS_BASIC_INFORMATION64
 {
     [FieldOffset(0x00)] public readonly NTSTATUS ExitStatus;
     [FieldOffset(0x04)] public readonly UIntPtr64<PEB64> PebBaseAddress;

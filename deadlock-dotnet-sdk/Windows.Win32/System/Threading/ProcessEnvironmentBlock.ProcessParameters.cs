@@ -15,7 +15,7 @@ public partial class ProcessEnvironmentBlock
 {
     public class UserProcessParameters
     {
-        internal UserProcessParameters(RTL_USER_PROCESS_PARAMETERS32 rupp32)
+        public UserProcessParameters(RTL_USER_PROCESS_PARAMETERS32 rupp32)
         {
             CommandLine.w32 = rupp32.CommandLine;
             ConsoleFlags = rupp32.ConsoleFlags;
@@ -57,7 +57,7 @@ public partial class ProcessEnvironmentBlock
             WindowTitle.w32 = rupp32.WindowTitle;
         }
 
-        internal UserProcessParameters(RTL_USER_PROCESS_PARAMETERS64 rupp64)
+        public UserProcessParameters(RTL_USER_PROCESS_PARAMETERS64 rupp64)
         {
             CommandLine.w64 = rupp64.CommandLine;
             ConsoleFlags = rupp64.ConsoleFlags;
@@ -105,16 +105,16 @@ public partial class ProcessEnvironmentBlock
         public uint Flags;
         public uint DebugFlags;
 
-        internal (HANDLE32? w32, HANDLE64? w64) ConsoleHandle;
-        internal uint ConsoleFlags;
-        internal (HANDLE32? w32, HANDLE64? w64) StandardInput;
-        internal (HANDLE32? w32, HANDLE64? w64) StandardOutput;
-        internal (HANDLE32? w32, HANDLE64? w64) StandardError;
+        public (HANDLE32? w32, HANDLE64? w64) ConsoleHandle;
+        public uint ConsoleFlags;
+        public (HANDLE32? w32, HANDLE64? w64) StandardInput;
+        public (HANDLE32? w32, HANDLE64? w64) StandardOutput;
+        public (HANDLE32? w32, HANDLE64? w64) StandardError;
 
-        internal (CURDIR32? w32, CURDIR64? w64) CurrentDirectory;
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) DllPath;
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) ImagePathName;
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) CommandLine;
+        public (CURDIR32? w32, CURDIR64? w64) CurrentDirectory;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) DllPath;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) ImagePathName;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) CommandLine;
 
         /// <summary>
         /// Using a SafeProcessHandle with <c>PROCESS_VM_READ</c> access, copy the target process's command line string.
@@ -172,7 +172,7 @@ public partial class ProcessEnvironmentBlock
             }
         }
 
-        internal (UIntPtr32? w32, UIntPtr64? w64) Environment;
+        public (UIntPtr32? w32, UIntPtr64? w64) Environment;
 
         public uint StartingX;
         public uint StartingY;
@@ -184,23 +184,23 @@ public partial class ProcessEnvironmentBlock
 
         public uint WindowFlags;
         public uint ShowWindowFlags;
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) WindowTitle;
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) DesktopInfo;
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) ShellInfo;
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) RuntimeData;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) WindowTitle;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) DesktopInfo;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) ShellInfo;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) RuntimeData;
 
-        internal (RTL_DRIVE_LETTER_CURDIR32[]? w32, RTL_DRIVE_LETTER_CURDIR64[]? w64) CurrentDirectories;
+        public (RTL_DRIVE_LETTER_CURDIR32[]? w32, RTL_DRIVE_LETTER_CURDIR64[]? w64) CurrentDirectories;
 
-        internal (UIntPtr32? w32, UIntPtr64? w64) EnvironmentSize;
-        internal (UIntPtr32? w32, UIntPtr64? w64) EnvironmentVersion;
+        public (UIntPtr32? w32, UIntPtr64? w64) EnvironmentSize;
+        public (UIntPtr32? w32, UIntPtr64? w64) EnvironmentVersion;
 
-        internal (UIntPtr32? w32, UIntPtr64? w64) PackageDependencyData;
+        public (UIntPtr32? w32, UIntPtr64? w64) PackageDependencyData;
         public uint ProcessGroupId;
         public uint LoaderThreads;
 
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) RedirectionDllName; // REDSTONE4
-        internal (UNICODE_STRING32? w32, UNICODE_STRING64? w64) HeapPartitionName; // 19H1
-        internal (UIntPtr32? w32, UIntPtr64? w64) DefaultThreadpoolCpuSetMasks;
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) RedirectionDllName; // REDSTONE4
+        public (UNICODE_STRING32? w32, UNICODE_STRING64? w64) HeapPartitionName; // 19H1
+        public (UIntPtr32? w32, UIntPtr64? w64) DefaultThreadpoolCpuSetMasks;
         public uint DefaultThreadpoolCpuSetMaskCount;
         public uint DefaultThreadpoolThreadMaximum;
     }

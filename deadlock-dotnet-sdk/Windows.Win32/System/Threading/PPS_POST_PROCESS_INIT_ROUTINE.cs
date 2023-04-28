@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 namespace Windows.Win32.System.Threading;
 
 [UnmanagedFunctionPointer(CallingConvention.Winapi)]
-internal unsafe delegate void PS_POST_PROCESS_INIT_ROUTINE();
+public unsafe delegate void PS_POST_PROCESS_INIT_ROUTINE();
 
 /// <summary>
 /// Function Pointer workaround. C# 9's function pointers are only allowed in
@@ -15,7 +15,7 @@ internal unsafe delegate void PS_POST_PROCESS_INIT_ROUTINE();
 /// will re-use that thunk.
 /// source: <see href="https://sourcegraph.com/github.com/dotnet/runtime@c92b4176e299c41c0100db91dbd61076f8e52e76/-/blob/src/coreclr/nativeaot/System.Private.CoreLib/src/System/Runtime/InteropServices/PInvokeMarshal.cs?L46:30" />
 /// </remarks>
-internal struct PPS_POST_PROCESS_INIT_ROUTINE : IEquatable<PPS_POST_PROCESS_INIT_ROUTINE>
+public struct PPS_POST_PROCESS_INIT_ROUTINE : IEquatable<PPS_POST_PROCESS_INIT_ROUTINE>
 {
     public IntPtr Value;
 
