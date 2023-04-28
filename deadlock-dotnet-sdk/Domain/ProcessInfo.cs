@@ -26,7 +26,6 @@ public partial class ProcessInfo
     private (ProcessBasicInformation? v, Exception? ex) processBasicInformation;
     private (string? v, Exception? ex) processCommandLine;
     private (ProcessQueryHandle? v, Exception? ex) processHandle;
-    private (bool? v, Exception? ex) processIsProtected;
     private (string? v, Exception? ex) processMainModulePath;
     private (string? v, Exception? ex) processName;
     private (PS_PROTECTION? v, Exception? ex) processProtection;
