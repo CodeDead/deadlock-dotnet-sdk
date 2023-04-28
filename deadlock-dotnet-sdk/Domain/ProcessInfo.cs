@@ -133,15 +133,9 @@ public partial class ProcessInfo
     {
         get
         {
-            if (processAndHostOSArch == default)
-            {
+            if (processAndHostOSArch is (null, null))
                 _ = Is32BitEmulatedProcess;
-                return processAndHostOSArch;
-            }
-            else
-            {
-                return processAndHostOSArch;
-            }
+            return processAndHostOSArch;
         }
     }
 
@@ -149,7 +143,7 @@ public partial class ProcessInfo
     {
         get
         {
-            if (processHandle == default)
+            if (processHandle is (null, null))
             {
                 const string exMsg = "Unable to open handle; ";
                 // We can't lookup the ProcessProtection without opening a process handle to check the process protection.
@@ -409,20 +403,14 @@ public partial class ProcessInfo
         }
     }
 
-    // TODO: ProcessBasicInformation and recursive members
     internal (ProcessBasicInformation? v, Exception? ex) ProcessBasicInformation
     {
         get
         {
-            if (processBasicInformation == default)
-            {
+            if (processBasicInformation is (null, null))
                 GetPropertiesViaProcessHandle();
-                return processBasicInformation;
-            }
-            else
-            {
-                return processBasicInformation;
-            }
+
+            return processBasicInformation;
         }
     }
 
@@ -462,7 +450,7 @@ public partial class ProcessInfo
     {
         get
         {
-            if (processMainModulePath == default)
+            if (processMainModulePath is (null, null))
             {
                 if (ProcessProtection.v is null)
                     return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Failed to query the process's protection:" + Env.NewLine + ProcessProtection.ex));
@@ -494,13 +482,13 @@ public partial class ProcessInfo
     {
         get
         {
-            if (processName == default)
+            if (processName is (null, null))
             {
                 try
                 {
-                    var proc = Process.GetProcessById(ProcessId);
-                    if (proc?.HasExited != false)
-                        return processName = (null, new InvalidOperationException("Process has exited, so the requested information is not available."));
+                    Process proc = Process.GetProcessById(ProcessId);
+                    if (proc.HasExited)
+                        return processName = (null, new InvalidOperationException("Process has exited so the requested information is not available."));
                     else return processName = (proc.ProcessName, null);
                 }
                 catch (Exception ex)
