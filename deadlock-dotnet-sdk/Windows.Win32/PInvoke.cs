@@ -208,5 +208,5 @@ static partial class PInvoke
     public static SafeFileHandle OpenProcessToken(SafeFileHandle ProcessHandle, TOKEN_ACCESS_MASK DesiredAccess)
         => OpenProcessToken(ProcessHandle, DesiredAccess, out SafeFileHandle TokenHandle) ? TokenHandle : throw new Win32Exception();
 
-    public static HANDLE_FLAGS GetHandleInformation(SafeHandle hObject) => (HANDLE_FLAGS)(GetHandleInformation(hObject, out uint flags) ? flags : throw new Win32Exception());
+    public static HANDLE_FLAGS GetHandleInformation(SafeHandle hObject) => GetHandleInformation(hObject, out uint flags) ? (HANDLE_FLAGS)flags : throw new Win32Exception();
 }
