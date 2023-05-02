@@ -425,7 +425,7 @@ public class SafeFileHandleEx : SafeHandleEx
             try
             {
                 const int timeout = 50;
-                Task<uint> taskGetLength = new(() => GetFinalPathNameByHandle(handle, buffer, bufLength, FILE_NAME.FILE_NAME_NORMALIZED));
+                Task<uint> taskGetLength = new(() => GetFinalPathNameByHandle(handle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED));
                 if (Task.WhenAny(taskGetLength, Task.Delay(timeout)).Result == taskGetLength)
                     length = taskGetLength.Result;
                 else
@@ -441,7 +441,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 else
                 {
                     using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
-                    Task<uint> taskGetPath = new(() => GetFinalPathNameByHandle(handle, newBuffer, length, FILE_NAME.FILE_NAME_NORMALIZED));
+                    Task<uint> taskGetPath = new(() => GetFinalPathNameByHandle(handle, newBuffer, length, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED));
                     if (Task.WhenAny(taskGetPath, Task.Delay(timeout)).Result == taskGetPath)
                     {
                         if (taskGetPath.Result is not 0)
@@ -473,7 +473,7 @@ public class SafeFileHandleEx : SafeHandleEx
             if (!DuplicateHandle(processHandle, this, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
                 throw new Win32Exception();
 
-            length = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+            length = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
 
             if (length != 0)
             {
@@ -481,7 +481,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 {
                     // buffer was too small. Reallocate buffer with size matched 'length' and try again
                     using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
-                    bufLength = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, FILE_NAME.FILE_NAME_NORMALIZED);
+                    bufLength = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
                     return (newBuffer.ToString(), null);
                 }
                 else
