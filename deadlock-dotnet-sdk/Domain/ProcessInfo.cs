@@ -509,17 +509,20 @@ public partial class ProcessInfo
     /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
     /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
     /// <exception cref="UnauthorizedAccessException">Failed to open process handle for processId; </exception>
-    private unsafe static string GetFullProcessImageName(uint processId)
+    private unsafe string GetFullProcessImageName(uint processId)
     {
+        //TODO: inline
         uint size = 260 + 1;
         uint bufferLength = size;
+        const string errUnableMsg = "Unable to query " + nameof(ProcessMainModulePath) + "; ";
 
-        using SafeProcessHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
-        if (hProcess.IsInvalid)
-            throw new UnauthorizedAccessException("Cannot query process's filename.", new Win32Exception());
+        if (ProcessHandle.v is null)
+            throw new InvalidOperationException(errUnableMsg + "Failed to open ProcessHandle.", ProcessHandle.ex);
+        if ((ProcessHandle.v.AccessRights & PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) is 0)
+            throw new UnauthorizedAccessException(errUnableMsg + nameof(ProcessHandle) + " was opened with insufficient access rights to perform this operation.");
 
         using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufferLength));
-        if (QueryFullProcessImageName(hProcess, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, lpExeName: buffer, ref size))
+        if (QueryFullProcessImageName(ProcessHandle.v, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, lpExeName: buffer, ref size))
         {
             return buffer.ToString();
         }
@@ -527,22 +530,15 @@ public partial class ProcessInfo
         {
             using PWSTR newBuffer = Marshal.AllocHGlobal((IntPtr)size);
             if (QueryFullProcessImageName(
-                            hProcess,
+                            ProcessHandle.v,
                             PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
                             newBuffer,
                             ref size))
             {
                 return newBuffer.ToString(); // newBuffer.Value will not be null here
             }
-            else
-            {
-                throw new Win32Exception(); // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
-            }
         }
-        else
-        {
-            // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
-            throw new Win32Exception();
-        }
+        // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
+        throw new Win32Exception();
     }
 }
