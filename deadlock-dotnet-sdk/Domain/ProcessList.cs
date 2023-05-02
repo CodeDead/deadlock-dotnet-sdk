@@ -1,15 +1,32 @@
+using System.Collections;
 using System.Diagnostics;
 using static System.Environment;
 namespace deadlock_dotnet_sdk.Domain;
 
-public sealed class ProcessList : List<ProcessInfo>
+public sealed class ProcessList : IList<ProcessInfo>
 {
-    public ProcessList() { }
-    public ProcessList(IEnumerable<ProcessInfo> collection) : base(collection)
-    { }
+    private readonly List<ProcessInfo> value;
 
-    public ProcessList(int capacity) : base(capacity)
-    { }
+    public ProcessList() { value = new(); }
+    public ProcessList(List<ProcessInfo> list) => value = list;
+    public ProcessList(IEnumerable<ProcessInfo> collection) => value = new(collection);
+    public ProcessList(int capacity) => value = new(capacity);
+
+    #region IList implementation
+    public ProcessInfo this[int index] { get => value[index]; set => this.value[index] = value; }
+    public int Count => value.Count;
+    public bool IsReadOnly => ((ICollection<ProcessInfo>)value).IsReadOnly;
+    public void Add(ProcessInfo item) => value.Add(item);
+    public void Clear() => value.Clear();
+    public bool Contains(ProcessInfo item) => value.Contains(item);
+    public void CopyTo(ProcessInfo[] array, int arrayIndex) => value.CopyTo(array, arrayIndex);
+    public IEnumerator<ProcessInfo> GetEnumerator() => ((IEnumerable<ProcessInfo>)value).GetEnumerator();
+    public int IndexOf(ProcessInfo item) => value.IndexOf(item);
+    public void Insert(int index, ProcessInfo item) => value.Insert(index, item);
+    public bool Remove(ProcessInfo item) => value.Remove(item);
+    public void RemoveAt(int index) => value.RemoveAt(index);
+    IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)value).GetEnumerator();
+    #endregion IList implementation
 
     /// <summary>
     /// Find a ProcessInfo by its process ID and returns it. If no existing ProcessInfo is found, the system is queried for a Process with that ID. If the returned Process is not null, it is returned as a ProcessInfo object.
@@ -18,7 +35,7 @@ public sealed class ProcessList : List<ProcessInfo>
     /// <returns>The existing ProcessInfo object with an ID matching <paramref name="processId"/>. If it does not exist yet, the system is queried for a Process with that ID. If the returned Process is not null, it is returned as a ProcessInfo object.</returns>
     public ProcessInfo GetProcessById(int processId)
     {
-        var result = Find(p => p.Process?.Id == processId);
+        var result = value.Find(p => p.Process?.Id == processId);
         if (result is not null)
             return result;
 
@@ -26,16 +43,7 @@ public sealed class ProcessList : List<ProcessInfo>
 
         try
         {
-            var p = Process.GetProcessById(processId);
-
-            if (p is null)
-            {
-                pi = new ProcessInfo(processId);
-                Add(pi);
-                return pi;
-            }
-
-            pi = new(p);
+            pi = new(Process.GetProcessById(processId));
             Add(pi);
             return pi;
         }
@@ -54,4 +62,6 @@ public sealed class ProcessList : List<ProcessInfo>
             return pi;
         }
     }
+
+    public static explicit operator ProcessList(List<ProcessInfo> v) => new(v);
 }
