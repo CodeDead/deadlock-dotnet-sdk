@@ -222,6 +222,11 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
+    /// <summary>
+    /// Try to get the absolute path of the file. Traverses filesystem links (e.g. symbolic, junction) to get the 'real' path.
+    /// </summary>
+    /// <returns>If successful, returns a path string formatted as 'X:\dir\file.ext' or 'X:\dir'</returns>
+    /// <remarks>GetFinalPathNameByHandle will sometimes hang when querying the Name of a Pipe.</remarks>
     public unsafe (string? v, Exception? ex) FileFullPath
     {
         get
