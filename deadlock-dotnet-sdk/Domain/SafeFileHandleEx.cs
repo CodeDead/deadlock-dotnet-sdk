@@ -62,7 +62,7 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    public (bool? v, Exception? ex) IsFileHandle => isFileHandle == default
+    public (bool? v, Exception? ex) IsFileHandle => isFileHandle is (null, null)
                 ? HandleObjectType.v == "File"
                     ? (isFileHandle = (true, null))
                     : (isFileHandle = (null, new Exception("Failed to determine if this handle's object is a file/directory; Failed to query the object's type.", HandleObjectType.ex)))
@@ -127,11 +127,11 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string unableErr = "Unable to query FileHandleType; ";
                 if (ProcessInfo.ProcessProtection.ex is not null)
-                    return (null, new NullReferenceException(unableErr + "Failed to query the process's protection level."));
+                    return fileHandleType = (null, new NullReferenceException(unableErr + "Failed to query the process's protection level."));
                 if (ProcessInfo.ProcessProtection.ex is not null)
-                    return (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits this operation."));
+                    return fileHandleType = (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits this operation."));
                 if (IsFileHandle.v is not true)
-                    return (null, new InvalidOperationException(unableErr + "This operation is only valid on File handles."));
+                    return fileHandleType = (null, new InvalidOperationException(unableErr + "This operation is only valid on File handles."));
 
                 FileType type = (FileType)GetFileType(handle);
                 Win32Exception err = new();
@@ -150,27 +150,27 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         get
         {
-            if (fileNameInfo == default)
+            if (fileNameInfo is (null, null))
             {
-                const string unableErr = "Unable to query FileNameInfo; ";
+                const string unableErrMsg = "Unable to query " + nameof(FileNameInfo) + "; ";
                 if (ProcessInfo.ProcessProtection.ex is not null)
-                    return fileNameInfo = (null, new NullReferenceException(unableErr + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
+                    return fileNameInfo = (null, new NullReferenceException(unableErrMsg + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
                 if (ProcessInfo.ProcessProtection.v?.Type is not PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone)
-                    return fileNameInfo = (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits querying a file handle's FILE_NAME_INFO."));
+                    return fileNameInfo = (null, new UnauthorizedAccessException(unableErrMsg + "The process's protection prohibits querying a file handle's FILE_NAME_INFO."));
                 if (FileHandleType.v is not FileType.Disk)
-                    return (null, new InvalidOperationException(unableErr + "FileNameInfo can only be queried for disk-type file handles."));
+                    return fileNameInfo = (null, new InvalidOperationException(unableErrMsg + "FileNameInfo can only be queried for disk-type file handles."));
 
                 /* Get fni.FileNameLength */
                 FILE_NAME_INFO fni = default;
                 int fniSize = Marshal.SizeOf(fni);
                 int bufferLength = default;
-
+                //TODO: remove task
                 using CancellationTokenSource cancellationTokenSource = new(50);
                 Task<FILE_NAME_INFO> taskGetInfo = new(() =>
                 {
-                    FILE_NAME_INFO tmp = default;
-                    _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &tmp, (uint)Marshal.SizeOf(fni));
-                    return tmp;
+                    FILE_NAME_INFO fni = default;
+                    _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
+                    return fni;
                 }, cancellationTokenSource.Token);
 
                 const int taskTimedOut = -1;
@@ -178,7 +178,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 {
                     if (Task.WaitAny(new Task[] { taskGetInfo }, 50) is taskTimedOut)
                     {
-                        return (null, new TimeoutException("GetFileInformationByHandleEx did not respond within 50ms."));
+                        return fileNameInfo = (null, new TimeoutException("GetFileInformationByHandleEx did not respond within 50ms."));
                     }
                     else
                     {
@@ -190,7 +190,7 @@ public class SafeFileHandleEx : SafeHandleEx
                     foreach (Exception e in ae.InnerExceptions)
                     {
                         if (e is TaskCanceledException)
-                            return (null, e);
+                            return fileNameInfo = (null, e);
                     }
                 }
 
@@ -212,7 +212,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 }
                 else
                 {
-                    return (null, new Exception("Failed to query FileNameInfo; GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
+                    return fileNameInfo = (null, new Exception("Failed to query FileNameInfo; GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
                 }
             }
             else
@@ -231,7 +231,7 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         get
         {
-            if (fileFullPath == default)
+            if (fileFullPath is (null, null))
             {
                 try
                 {
@@ -254,41 +254,43 @@ public class SafeFileHandleEx : SafeHandleEx
                     const uint LengthIndicatesError = 0;
 
                     // Try without duplicating. If it fails, try duplicating the handle.
-                    var sw = new Stopwatch();
-                    sw.Start();
+                    Stopwatch sw = Stopwatch.StartNew();
                     try
                     {
                         GETFINALPATHNAMEBYHANDLE_FLAGS flags = IsFilePathRemote.v is true ? GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_OPENED : GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED;
                         Win32ErrorCode errorCode = Win32ErrorCode.ERROR_SUCCESS;
                         length = GetFinalPathNameByHandle(handle, buffer, bufLength, flags);
 
-                        if (length is not LengthIndicatesError && length <= bufLength)
+                        if (length is not LengthIndicatesError)
                         {
-                            return fileFullPath = (buffer.ToString(), null);
-                        }
-                        else if (length > bufLength)
-                        {
-                            using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
-                            if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, flags)) is not LengthIndicatesError)
-                                return fileFullPath = (newBuffer.ToString(), null);
+                            if (length <= bufLength)
+                            {
+                                return fileFullPath = (buffer.ToString(), null);
+                            }
+                            else if (length > bufLength)
+                            {
+                                using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
+                                if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, flags)) is not LengthIndicatesError)
+                                    return fileFullPath = (newBuffer.ToString(), null);
+                            }
                         }
                         else
                         {
                             errorCode = (Win32ErrorCode)Marshal.GetLastPInvokeError();
+
+                            Trace.TraceError(errorCode.GetMessage());
+
+                            return fileFullPath = (null, errorCode switch
+                            {
+                                // Removable storage, deleted item, network shares, et cetera
+                                Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException(errFailMsg + $"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(errorCode)),
+                                // unlikely, but possible if system has little free memory
+                                Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException(errFailMsg + "Insufficient memory to complete the operation.", new Win32Exception(errorCode)),
+                                // possible only if FILE_NAME_NORMALIZED (0) is invalid
+                                Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags.", new Win32Exception(errorCode)),
+                                _ => new Exception($"An undocumented error ({errorCode}) was returned when querying a file handle for its path.", new Win32Exception(errorCode))
+                            });
                         }
-
-                        Trace.TraceError(errorCode.GetMessage());
-
-                        return fileFullPath = (null, errorCode switch
-                        {
-                            // Removable storage, deleted item, network shares, et cetera
-                            Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException(errFailMsg + $"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(errorCode)),
-                            // unlikely, but possible if system has little free memory
-                            Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException(errFailMsg + "Insufficient memory to complete the operation.", new Win32Exception(errorCode)),
-                            // possible only if FILE_NAME_NORMALIZED (0) is invalid
-                            Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags.", new Win32Exception(errorCode)),
-                            _ => new Exception($"An undocumented error ({errorCode}) was returned when querying a file handle for its path.", new Win32Exception(errorCode))
-                        });
                     }
                     catch (Exception ex)
                     {
@@ -319,7 +321,7 @@ public class SafeFileHandleEx : SafeHandleEx
                             // buffer was too small. Reallocate buffer with size matched 'length' and try again
                             using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
                             bufLength = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
-                            return (newBuffer.ToString(), null);
+                            return fileFullPath = (newBuffer.ToString(), null);
                         }
                     }
                     else
@@ -356,7 +358,7 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         get
         {
-            if (fileName == default)
+            if (fileName is (null, null))
             {
                 if (FileFullPath.v is not null)
                 {
@@ -382,7 +384,7 @@ public class SafeFileHandleEx : SafeHandleEx
     {
         get
         {
-            if (isDirectory == default)
+            if (isDirectory is (null, null))
             {
                 if (FileFullPath != default && FileFullPath.v != null) // The comparison *should* cause FileFullPath to initialize.
                 {
@@ -392,11 +394,11 @@ public class SafeFileHandleEx : SafeHandleEx
                     }
                     catch (Exception ex)
                     {
-                        return (null, ex);
+                        return isDirectory = (null, ex);
                     }
                 }
 
-                return (null, new InvalidOperationException("Unable to query IsDirectory; This operation requires FileFullPath."));
+                return isDirectory = (null, new InvalidOperationException("Unable to query IsDirectory; This operation requires FileFullPath."));
             }
             else
             {

@@ -55,7 +55,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         get
         {
-            if (handleObjectType == default)
+            if (handleObjectType is (null, null))
             {
                 var (v, ex) = ProcessInfo.ProcessProtection;
                 if (v is null)
@@ -124,13 +124,15 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             if (objectName == default)
             {
+                const string errUnableMsg = "Unable to query " + nameof(ObjectName) + "; ";
+                const string errFailedMsg = "Failed to query " + nameof(ObjectName) + "; ";
                 var (v, ex) = ProcessInfo.ProcessProtection;
                 // I'm assuming process protection prohibits access. I've not tested it.
                 // This information is not queryable in SystemInformer when a process has Full protection.
                 if (v is null)
-                    return objectName = (null, new UnauthorizedAccessException("Unable to query ObjectName; Failed to query process's protection level.", ex));
+                    return objectName = (null, new UnauthorizedAccessException(errUnableMsg + "Failed to query process's protection level.", ex));
                 else if (v.Value.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
-                    return objectName = (null, new UnauthorizedAccessException("Unable to query ObjectName; The process's protection type prohibits access."));
+                    return objectName = (null, new UnauthorizedAccessException(errUnableMsg + "The process's protection type prohibits access."));
 
                 uint bufferLength = 1024u;
                 using SafeBuffer<OBJECT_NAME_INFORMATION> buffer = new(numBytes: bufferLength);
@@ -148,7 +150,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 
                 OBJECT_NAME_INFORMATION oni = buffer.Read<OBJECT_NAME_INFORMATION>(0);
                 if (oni.Name.Buffer.Value == null)
-                    return (null, new NullReferenceException("Bad data was copied to the buffer. The string pointer is null."));
+                    return objectName = (null, new NullReferenceException(errFailedMsg + "Bad data was copied to the buffer. The string pointer is null."));
 
                 return status.IsSuccessful
                     ? objectName = (oni.NameAsString, null)
