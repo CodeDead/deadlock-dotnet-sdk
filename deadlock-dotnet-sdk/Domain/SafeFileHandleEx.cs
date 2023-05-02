@@ -235,16 +235,18 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 try
                 {
+                    const string errUnableMsg = "Unable to query " + nameof(FileFullPath) + "; ";
+                    const string errFailMsg = "Failed to query " + nameof(FileFullPath) + "; ";
                     if (ProcessInfo.ProcessProtection.v is null)
-                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; Failed to query the process's protection:" + Environment.NewLine + ProcessInfo.ProcessProtection.ex));
+                        return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query the process's protection.", ProcessInfo.ProcessProtection.ex));
                     if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
-                        return fileFullPath = (null, new UnauthorizedAccessException("Unable to query disk/network path; The process is protected."));
+                        return fileFullPath = (null, new UnauthorizedAccessException(errUnableMsg + "The process is protected."));
                     if (HandleObjectType.v is null)
-                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; Failed to query handle object type." + Environment.NewLine + HandleObjectType.ex));
+                        return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query handle object type.", HandleObjectType.ex));
                     if (IsFileHandle.v is false)
-                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; The handle's object is not a File."));
+                        return fileFullPath = (null, new ArgumentException(errUnableMsg + "The handle's object is not a File.", nameof(IsFileHandle)));
                     if (FileHandleType.v is not FileType.Disk)
-                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; The File object is not a Disk-type File."));
+                        return fileFullPath = (null, new ArgumentException(errUnableMsg + "The File object is not a Disk-type File.", nameof(FileHandleType)));
 
                     uint bufLength = (uint)short.MaxValue;
                     using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufLength));
@@ -256,31 +258,45 @@ public class SafeFileHandleEx : SafeHandleEx
                     sw.Start();
                     try
                     {
-                        if ((length = GetFinalPathNameByHandle(handle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED)) <= bufLength)
+                        Win32ErrorCode errorCode = Win32ErrorCode.ERROR_SUCCESS;
+                        length = GetFinalPathNameByHandle(handle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
+
+                        if (length is not LengthIndicatesError && length <= bufLength)
                         {
-                            return (buffer.ToString(), null);
+                            return fileFullPath = (buffer.ToString(), null);
                         }
                         else if (length > bufLength)
                         {
                             using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
-                            if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED)) is not 0)
-                                return (newBuffer.ToString(), null);
-                            else
-                                throw new Win32Exception();
+                            if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED)) is not LengthIndicatesError)
+                                return fileFullPath = (newBuffer.ToString(), null);
                         }
                         else
                         {
-                            throw new Win32Exception();
+                            errorCode = (Win32ErrorCode)Marshal.GetLastPInvokeError();
                         }
+
+                        Trace.TraceError(errorCode.GetMessage());
+
+                        return fileFullPath = (null, errorCode switch
+                        {
+                            // Removable storage, deleted item, network shares, et cetera
+                            Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException(errFailMsg + $"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(errorCode)),
+                            // unlikely, but possible if system has little free memory
+                            Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException(errFailMsg + "Insufficient memory to complete the operation.", new Win32Exception(errorCode)),
+                            // possible only if FILE_NAME_NORMALIZED (0) is invalid
+                            Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags.", new Win32Exception(errorCode)),
+                            _ => new Exception($"An undocumented error ({errorCode}) was returned when querying a file handle for its path.", new Win32Exception(errorCode))
+                        });
                     }
                     catch (Exception ex)
                     {
-                        _ = ex;
+                        return fileFullPath = (null, ex);
                     }
                     finally
                     {
                         sw.Stop();
-                        Console.Out.WriteLine($"(handle 0x{handle:X}) TryGetFinalPath time: {sw.Elapsed}"); // TODO: debug. Determine better timeout.
+                        Console.WriteLine($"(handle 0x{handle:X}) TryGetFinalPath time: {sw.Elapsed}");
                     }
 
                     /// Return the normalized drive name. This is the default.
@@ -412,7 +428,7 @@ public class SafeFileHandleEx : SafeHandleEx
         string[] exLog = ExceptionLog.ConvertAll(ex => ex.ToString()).ToArray();
         for (int i = 0; i < exLog.Length; i++)
         {
-            exLog[i] = $" {exLog[i]}".Replace("\n", "\n    ") + Environment.NewLine;
+            exLog[i] = $" {exLog[i]}".Replace("\n", "\n    ") + "\r\n";
         }
 
         return @$"{nameof(SafeFileHandleEx)} hash:{GetHashCode()}

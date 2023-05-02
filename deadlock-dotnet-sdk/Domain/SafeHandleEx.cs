@@ -60,7 +60,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 var (v, ex) = ProcessInfo.ProcessProtection;
                 if (v is null)
                 {
-                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Failed to query the process's protection:" + Environment.NewLine + ex, ex));
+                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Failed to query the process's protection:\r\n" + ex, ex));
                 }
                 else if (v.Value.Type is PsProtectedTypeNone or PsProtectedTypeProtectedLight)
                 {

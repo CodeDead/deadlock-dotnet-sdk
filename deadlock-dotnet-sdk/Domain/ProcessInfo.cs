@@ -159,7 +159,7 @@ public partial class ProcessInfo
                 {
                     // Before assuming anything, try without PROCESS_VM_READ. Without it, we don't need Debug privilege, but the PEB and all of its recursive members (e.g. Command Line) will be unavailable.
                     const string exAccessMsg = exMsg + " The requested permissions were denied.";
-                    string exPermsFirst = Env.NewLine + "First attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) + ", " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ);
+                    const string exPermsFirst = "\r\nFirst attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) + ", " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ);
 
                     try
                     {
@@ -168,7 +168,7 @@ public partial class ProcessInfo
                     catch (Win32Exception ex2) when ((Win32ErrorCode)ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
                     {
                         // Debug Mode could not be enabled? Was SE_DEBUG_NAME denied to user or is current process not elevated?
-                        string exPermsSecond = Env.NewLine + "Second attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
+                        const string exPermsSecond = "\r\nSecond attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
                         return processHandle = (null, new UnauthorizedAccessException(exAccessMsg + exPermsFirst + exPermsSecond, ex2));
                     }
                     catch (Exception ex2)
@@ -245,7 +245,7 @@ public partial class ProcessInfo
                 {
 #if DEBUG
                     Trace.TraceInformation(
-                        "bufferLength: " + bufferCmdLine.ByteLength + Env.NewLine +
+                        "bufferLength: " + bufferCmdLine.ByteLength + "\r\n" +
                         "returnLength: " + returnLength);
 #endif
                     // !WARNING may throw OutOfMemoryException; ReAllocHGlobal received a null pointer, but didn't check the error code
@@ -447,7 +447,7 @@ public partial class ProcessInfo
             if (processMainModulePath is (null, null))
             {
                 if (ProcessProtection.v is null)
-                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Failed to query the process's protection:" + Env.NewLine + ProcessProtection.ex));
+                    return processMainModulePath = (null, new InvalidOperationException("Unable to query ProcessMainModulePath; Failed to query the process's protection:\r\n" + ProcessProtection.ex, ProcessProtection.ex));
 
                 if (ProcessProtection.v.Value.Type is PsProtectedTypeProtected)
                     return processMainModulePath = (null, new UnauthorizedAccessException("Unable to query ProcessMainModulePath; The process is protected."));
