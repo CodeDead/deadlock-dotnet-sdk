@@ -222,7 +222,112 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    public (string? v, Exception? ex) FileFullPath => fileFullPath == default ? (fileFullPath = TryGetFinalPath()) : fileFullPath;
+    public unsafe (string? v, Exception? ex) FileFullPath
+    {
+        get
+        {
+            if (fileFullPath == default)
+            {
+                try
+                {
+                    if (ProcessInfo.ProcessProtection.v is null)
+                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; Failed to query the process's protection:" + Environment.NewLine + ProcessInfo.ProcessProtection.ex));
+                    if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
+                        return fileFullPath = (null, new UnauthorizedAccessException("Unable to query disk/network path; The process is protected."));
+                    if (HandleObjectType.v is null)
+                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; Failed to query handle object type." + Environment.NewLine + HandleObjectType.ex));
+                    if (IsFileHandle.v is false)
+                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; The handle's object is not a File."));
+                    if (FileHandleType.v is not FileType.Disk)
+                        return fileFullPath = (null, new InvalidOperationException("Unable to query disk/network path; The File object is not a Disk-type File."));
+
+                    uint bufLength = (uint)short.MaxValue;
+                    using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufLength));
+                    uint length = 0;
+                    const uint LengthIndicatesError = 0;
+
+                    // Try without duplicating. If it fails, try duplicating the handle.
+                    var sw = new Stopwatch();
+                    sw.Start();
+                    try
+                    {
+                        if ((length = GetFinalPathNameByHandle(handle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED)) <= bufLength)
+                        {
+                            return (buffer.ToString(), null);
+                        }
+                        else if (length > bufLength)
+                        {
+                            using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
+                            if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED)) is not 0)
+                                return (newBuffer.ToString(), null);
+                            else
+                                throw new Win32Exception();
+                        }
+                        else
+                        {
+                            throw new Win32Exception();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _ = ex;
+                    }
+                    finally
+                    {
+                        sw.Stop();
+                        Console.Out.WriteLine($"(handle 0x{handle:X}) TryGetFinalPath time: {sw.Elapsed}"); // TODO: debug. Determine better timeout.
+                    }
+
+                    /// Return the normalized drive name. This is the default.
+                    using SafeProcessHandle processHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
+                    if (processHandle is null || processHandle?.IsInvalid == true)
+                        throw new Win32Exception();
+
+                    if (!DuplicateHandle(processHandle, this, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
+                        throw new Win32Exception();
+
+                    length = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
+
+                    if (length != 0)
+                    {
+                        if (length <= bufLength)
+                            return fileFullPath = (buffer.ToString(), null);
+
+                        {
+                            // buffer was too small. Reallocate buffer with size matched 'length' and try again
+                            using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
+                            bufLength = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
+                            return (newBuffer.ToString(), null);
+                        }
+                    }
+                    else
+                    {
+                        Win32ErrorCode error = (Win32ErrorCode)Marshal.GetLastWin32Error();
+                        Trace.TraceError(error.GetMessage());
+
+                        return (null, error switch
+                        {
+                            // Removable storage, deleted item, network shares, et cetera
+                            Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(error)),
+                            // unlikely, but possible if system has little free memory
+                            Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException("Failed to query path from file handle. Insufficient memory to complete the operation.", new Win32Exception(error)),
+                            // possible only if FILE_NAME_NORMALIZED (0) is invalid
+                            Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags.", new Win32Exception(error)),
+                            _ => new Exception($"An undocumented error ({error}) was returned when querying a file handle for its path.", new Win32Exception(error))
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return fileFullPath = (null, ex);
+                }
+            }
+            else
+            {
+                return fileFullPath;
+            }
+        }
+    }
 
     // TODO: leverage GetFileInformationByHandleEx
     public (string? v, Exception? ex) FileName
