@@ -235,6 +235,10 @@ public class SafeFileHandleEx : SafeHandleEx
                 {
                     return fileName = (Path.GetFileName(FileFullPath.v), null);
                 }
+                else if (ObjectName.v is not null)
+                {
+                    return fileName = (Path.GetFileName(ObjectName.v), null);
+                }
                 else
                 {
                     return fileName = (null, new InvalidOperationException("Unable to query FileName; This operation requires FileFullPath."));
