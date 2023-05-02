@@ -11,7 +11,7 @@ using static Windows.Win32.PS_PROTECTION.PS_PROTECTED_TYPE;
 using Code = PInvoke.NTSTATUS.Code;
 using Env = System.Environment;
 using NTSTATUS = Windows.Win32.Foundation.NTSTATUS;
-using Win32Exception = System.ComponentModel.Win32Exception;
+using Win32Exception = PInvoke.Win32Exception;
 
 namespace deadlock_dotnet_sdk.Domain;
 
@@ -155,7 +155,7 @@ public partial class ProcessInfo
                             PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ),
                         null);
                 }
-                catch (Win32Exception ex) when ((Win32ErrorCode)ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
+                catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
                 {
                     // Before assuming anything, try without PROCESS_VM_READ. Without it, we don't need Debug privilege, but the PEB and all of its recursive members (e.g. Command Line) will be unavailable.
                     const string exAccessMsg = exMsg + " The requested permissions were denied.";
@@ -165,7 +165,7 @@ public partial class ProcessInfo
                     {
                         return processHandle = (ProcessQueryHandle.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION), null);
                     }
-                    catch (Win32Exception ex2) when ((Win32ErrorCode)ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
+                    catch (Win32Exception ex2) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
                     {
                         // Debug Mode could not be enabled? Was SE_DEBUG_NAME denied to user or is current process not elevated?
                         const string exPermsSecond = "\r\nSecond attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
@@ -456,9 +456,9 @@ public partial class ProcessInfo
                 {
                     return processMainModulePath = (GetFullProcessImageName((uint)ProcessId), null);
                 }
-                catch (Win32Exception ex) when (ex.ErrorCode == 31)
+                catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_GEN_FAILURE)
                 {
-                    return processMainModulePath = (null, new InvalidOperationException("Process has exited, so the requested information is not available.", ex));
+                    return processMainModulePath = (null, new InvalidOperationException("Process has exited, but some of its handles are still open. The requested information is not available.", ex));
                 }
                 catch (Exception ex)
                 {
