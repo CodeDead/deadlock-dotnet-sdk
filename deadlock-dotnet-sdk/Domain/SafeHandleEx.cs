@@ -24,7 +24,6 @@ namespace deadlock_dotnet_sdk.Domain;
 /// </summary>
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
-    // TODO: override IsInvalid 
     protected (string? v, Exception? ex) handleObjectType;
     private (string? v, Exception? ex) objectName;
     private ProcessInfo? processInfo;
@@ -84,6 +83,28 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 return handleObjectType;
             }
         }
+    }
+
+    /// <summary>
+    /// (non-persistent) Pass the handle to GetHandleInformation and check for ERROR_INVALID_HANDLE to determine if the handle is open or closed.
+    /// </summary>
+    public new bool IsClosed => GetIsClosed();
+
+    private bool GetIsClosed()
+    {
+        try
+        {
+            HANDLE_FLAGS flags = GetHandleInformation(this);
+        }
+        catch (PInvoke.Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_HANDLE)
+        {
+            return true;
+        }
+        catch (PInvoke.Win32Exception ex)
+        {
+            Trace.TraceError(ex.ToString());
+        }
+        return false;
     }
 
     /// <summary>
