@@ -49,14 +49,14 @@ public sealed class ProcessList : IList<ProcessInfo>
         }
         catch (ArgumentException ex) // 
         {
-            Trace.WriteLine($"No process was found with ID {processId}. If it *did* exist, the process had exited and is not in .NET's internal process list." + NewLine + ex.ToString(), "ERROR");
+            Trace.TraceError($"No process was found with ID {processId}. If it *did* exist, the process had exited and is not in .NET's internal process list." + NewLine + ex.ToString());
             pi = new ProcessInfo(processId);
             Add(pi);
             return pi;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine("An unknown exception was thrown." + NewLine + ex, "ERROR");
+            Trace.TraceError("An unknown exception was thrown." + NewLine + ex);
             pi = new ProcessInfo(processId);
             Add(pi);
             return pi;
