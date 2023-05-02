@@ -25,7 +25,7 @@ namespace deadlock_dotnet_sdk.Domain;
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
     protected (string? v, Exception? ex) handleObjectType;
-    private (string? v, Exception? ex) objectName;
+    protected (string? v, Exception? ex) objectName;
     private ProcessInfo? processInfo;
 
     public SafeHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
