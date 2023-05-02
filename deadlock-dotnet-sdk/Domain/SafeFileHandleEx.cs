@@ -400,7 +400,14 @@ public class SafeFileHandleEx : SafeHandleEx
         Pipe = FILE_TYPE.FILE_TYPE_PIPE,
     }
 
-    public override string ToString()
+    public override string ToString() => ToString(true);
+
+    /// <summary>
+    /// Get the string representation of this SafeFileHandleEx object.
+    /// </summary>
+    /// <param name="init">If TRUE, get values from Properties. If FALSE, get values from Properties' backing fields.</param>
+    /// <returns>The string representation of this SafeFileHandleEx object.</returns>
+    public string ToString(bool init)
     {
         string[] exLog = ExceptionLog.ConvertAll(ex => ex.ToString()).ToArray();
         for (int i = 0; i < exLog.Length; i++)
@@ -408,20 +415,20 @@ public class SafeFileHandleEx : SafeHandleEx
             exLog[i] = $" {exLog[i]}".Replace("\n", "\n    ") + Environment.NewLine;
         }
 
-        return @$"{GetType().Name} hash:{GetHashCode()}
+        return @$"{nameof(SafeFileHandleEx)} hash:{GetHashCode()}
         {nameof(CreatorBackTraceIndex)}             : {CreatorBackTraceIndex}
-        {nameof(FileFullPath)}                      : {FileFullPath.v ?? FileFullPath.ex?.ToString()}
-        {nameof(FileHandleType)}                    : {FileHandleType.v?.ToString() ?? FileFullPath.ex?.ToString()} 
-        {nameof(FileName)}                          : {FileName.v ?? FileName.ex?.ToString()}
+        {nameof(FileFullPath)}                      : {(init ? (FileFullPath.v ?? FileFullPath.ex?.ToString()) : (fileFullPath.v ?? fileFullPath.ex?.ToString()))}
+        {nameof(FileHandleType)}                    : {(init ? (FileHandleType.v?.ToString() ?? FileFullPath.ex?.ToString()) : (fileHandleType.v?.ToString() ?? fileHandleType.ex?.ToString()))}
+        {nameof(FileName)}                          : {(init ? (FileName.v ?? FileName.ex?.ToString()) : (fileName.v ?? fileName.ex?.ToString()))}
         {nameof(GrantedAccess)}                     : {SysHandleEx.GrantedAccessString}
-        {nameof(HandleObjectType)}                  : {HandleObjectType.v ?? HandleObjectType.ex?.ToString()}
+        {nameof(HandleObjectType)}                  : {(init ? (HandleObjectType.v ?? HandleObjectType.ex?.ToString()) : (handleObjectType.v ?? handleObjectType.ex?.ToString()))}
         {nameof(HandleValue)}                       : {HandleValue} (0x{HandleValue:X})
         {nameof(IsClosed)}                          : {IsClosed}
-        {nameof(IsDirectory)}                       : {IsDirectory.v?.ToString() ?? IsDirectory.ex?.ToString()}
-        {nameof(IsFileHandle)}                      : {IsFileHandle.v?.ToString() ?? IsFileHandle.ex?.ToString()}
+        {nameof(IsDirectory)}                       : {(init ? (IsDirectory.v?.ToString() ?? IsDirectory.ex?.ToString()) : (isDirectory.v?.ToString() ?? isDirectory.ex?.ToString()))}
+        {nameof(IsFileHandle)}                      : {(init ? (IsFileHandle.v?.ToString() ?? IsFileHandle.ex?.ToString()) : (isFileHandle.v?.ToString() ?? isFileHandle.ex?.ToString()))}
         {nameof(IsInvalid)}                         : {IsInvalid}
         {nameof(ObjectAddress)}                     : {ObjectAddress} (0x{ObjectAddress:X})
-        {nameof(ObjectName)}                        : {ObjectName.v ?? ObjectName.ex?.ToString()}
+        {nameof(ObjectName)}                        : {(init ? (ObjectName.v ?? ObjectName.ex?.ToString()) : (objectName.v ?? objectName.ex?.ToString()))}
         {nameof(ProcessId)}                         : {ProcessId}
         {nameof(ProcessInfo.ParentId)}              : {ProcessInfo.ParentId.v?.ToString() ?? ProcessInfo.ParentId.ex?.ToString() ?? string.Empty}
         {nameof(ProcessInfo.ProcessCommandLine)}    : {ProcessInfo.ProcessCommandLine.v ?? ProcessInfo.ProcessCommandLine.ex?.ToString()}

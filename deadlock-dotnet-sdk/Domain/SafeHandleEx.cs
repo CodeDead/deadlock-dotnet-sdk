@@ -107,6 +107,8 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         return false;
     }
 
+    public new bool IsInvalid => IsClosed || base.IsInvalid || base.IsClosed;
+
     /// <summary>
     /// The name of the object e.g. "\\Device\\HarddiskVolume4\\Repos\\BinToss\\deadlock-dotnet-diagnostics\\deadlock-diagnostics" or "\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Control\\Nls\\Sorting\\Versions"
     /// </summary>
