@@ -513,7 +513,7 @@ public partial class ProcessInfo
     {
         //TODO: inline
         uint size = 260 + 1;
-        uint bufferLength = size;
+        char[] array = new char[size];
         const string errUnableMsg = "Unable to query " + nameof(ProcessMainModulePath) + "; ";
 
         if (ProcessHandle.v is null)
@@ -521,21 +521,23 @@ public partial class ProcessInfo
         if ((ProcessHandle.v.AccessRights & PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) is 0)
             throw new UnauthorizedAccessException(errUnableMsg + nameof(ProcessHandle) + " was opened with insufficient access rights to perform this operation.");
 
-        using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufferLength));
-        if (QueryFullProcessImageName(ProcessHandle.v, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, lpExeName: buffer, ref size))
+        SafeBuffer<char> buffer = new(numElements: size);
+        if (QueryFullProcessImageName(ProcessHandle.v, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, lpExeName: buffer.DangerousGetHandle(), ref size))
         {
-            return buffer.ToString();
+            buffer.ReadArray(0, array, 0, (int)size);
+            return new string(array);
         }
-        else if (bufferLength < size)
+        else if (buffer.ByteLength < size)
         {
-            using PWSTR newBuffer = Marshal.AllocHGlobal((IntPtr)size);
+            buffer.Reallocate((nuint)(size * Marshal.SizeOf<char>()));
             if (QueryFullProcessImageName(
                             ProcessHandle.v,
                             PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-                            newBuffer,
+                            buffer.DangerousGetHandle(),
                             ref size))
             {
-                return newBuffer.ToString(); // newBuffer.Value will not be null here
+                buffer.ReadArray(0, array, 0, (int)size);
+                return new string(array);
             }
         }
         // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
