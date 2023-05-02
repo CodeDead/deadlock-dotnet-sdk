@@ -381,7 +381,7 @@ public partial class ProcessInfo
     {
         get
         {
-            if (processProtection == default)
+            if (processProtection is (null, null))
             {
                 const uint ProcessProtectionInformation = 61; // Retrieves a BYTE value indicating the type of protected process and the protected process signer.
                 PS_PROTECTION protection = default;
