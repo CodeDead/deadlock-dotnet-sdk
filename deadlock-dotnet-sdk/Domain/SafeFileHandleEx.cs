@@ -258,8 +258,9 @@ public class SafeFileHandleEx : SafeHandleEx
                     sw.Start();
                     try
                     {
+                        GETFINALPATHNAMEBYHANDLE_FLAGS flags = IsFilePathRemote.v is true ? GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_OPENED : GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED;
                         Win32ErrorCode errorCode = Win32ErrorCode.ERROR_SUCCESS;
-                        length = GetFinalPathNameByHandle(handle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
+                        length = GetFinalPathNameByHandle(handle, buffer, bufLength, flags);
 
                         if (length is not LengthIndicatesError && length <= bufLength)
                         {
@@ -268,7 +269,7 @@ public class SafeFileHandleEx : SafeHandleEx
                         else if (length > bufLength)
                         {
                             using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
-                            if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED)) is not LengthIndicatesError)
+                            if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, flags)) is not LengthIndicatesError)
                                 return fileFullPath = (newBuffer.ToString(), null);
                         }
                         else
