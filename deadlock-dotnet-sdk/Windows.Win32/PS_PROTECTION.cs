@@ -63,4 +63,6 @@ public struct PS_PROTECTION : IEquatable<PS_PROTECTION>
 
         return $"{sType} {sSigner}";
     }
+
+    public override int GetHashCode() => Level;
 }
