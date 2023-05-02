@@ -150,10 +150,10 @@ public partial class ProcessInfo
 
                 try
                 {
-                    return processHandle = (ProcessQueryHandle.OpenProcessHandle(
-                            ProcessId,
-                            PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ),
-                        null);
+                    ProcessQueryHandle h = ProcessQueryHandle.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ);
+                    canGetQueryLimitedInfoHandle = true;
+                    canGetReadMemoryHandle = true;
+                    return processHandle = (h, null);
                 }
                 catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
                 {
@@ -163,7 +163,9 @@ public partial class ProcessInfo
 
                     try
                     {
-                        return processHandle = (ProcessQueryHandle.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION), null);
+                        ProcessQueryHandle h = ProcessQueryHandle.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
+                        canGetQueryLimitedInfoHandle = true;
+                        return processHandle = (h, null);
                     }
                     catch (Win32Exception ex2) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
                     {
@@ -176,7 +178,7 @@ public partial class ProcessInfo
                         return processHandle = (null, new AggregateException(exMsg + " Permissions were denied and an unknown error occurred.", new Exception[] { ex, ex2 }));
                     }
                 }
-                catch (Win32Exception ex) when ((Win32ErrorCode)ex.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_PARAMETER)
+                catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_PARAMETER)
                 {
                     return processHandle = (null, new ArgumentException(exMsg + " A process with ID " + ProcessId + " could not be found. The process may have exited.", ex));
                 }
