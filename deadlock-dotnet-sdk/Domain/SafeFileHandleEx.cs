@@ -23,13 +23,13 @@ namespace deadlock_dotnet_sdk.Domain;
 /// </summary>
 public class SafeFileHandleEx : SafeHandleEx
 {
+    private (bool? v, Exception? ex) isDirectory;
     private (bool? v, Exception? ex) isFileHandle;
     private (bool? v, Exception? ex) isFilePathRemote;
-    private (FileType? v, Exception? ex) fileHandleType;
-    private (string? v, Exception? ex) fileNameInfo;
     private (string? v, Exception? ex) fileFullPath;
+    private (FileType? v, Exception? ex) fileHandleType;
     private (string? v, Exception? ex) fileName;
-    private (bool? v, Exception? ex) isDirectory;
+    private (string? v, Exception? ex) fileNameInfo;
 
     // TODO: there's gotta be a better way to cast a base class to an implementing class
     internal SafeFileHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
@@ -59,6 +59,35 @@ public class SafeFileHandleEx : SafeHandleEx
         else
         {
             ExceptionLog.Add(new InvalidCastException("Cannot cast non-file handle to file handle!"));
+        }
+    }
+
+    #region Properties
+
+    public (bool? v, Exception? ex) IsDirectory
+    {
+        get
+        {
+            if (isDirectory is (null, null))
+            {
+                if (FileFullPath != default && FileFullPath.v != null) // The comparison *should* cause FileFullPath to initialize.
+                {
+                    try
+                    {
+                        return isDirectory = ((File.GetAttributes(FileFullPath.v) & FileAttributes.Directory) == FileAttributes.Directory, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        return isDirectory = (null, ex);
+                    }
+                }
+
+                return isDirectory = (null, new InvalidOperationException("Unable to query IsDirectory; This operation requires FileFullPath."));
+            }
+            else
+            {
+                return isDirectory;
+            }
         }
     }
 
@@ -110,114 +139,6 @@ public class SafeFileHandleEx : SafeHandleEx
             else
             {
                 return isFilePathRemote;
-            }
-        }
-    }
-
-    /// <summary>
-    /// If the handle object's Type is "File", the type of the File object<br/>
-    /// -OR-<br/>
-    /// An exception if the P/Invoke operation failed or the object's Type is not "File".
-    /// </summary>
-    public (FileType? v, Exception? ex) FileHandleType
-    {
-        get
-        {
-            if (fileHandleType is (null, null))
-            {
-                const string unableErr = "Unable to query FileHandleType; ";
-                if (ProcessInfo.ProcessProtection.ex is not null)
-                    return fileHandleType = (null, new NullReferenceException(unableErr + "Failed to query the process's protection level."));
-                if (ProcessInfo.ProcessProtection.ex is not null)
-                    return fileHandleType = (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits this operation."));
-                if (IsFileHandle.v is not true)
-                    return fileHandleType = (null, new InvalidOperationException(unableErr + "This operation is only valid on File handles."));
-
-                FileType type = (FileType)GetFileType(handle);
-                Win32Exception err = new();
-                return err.ErrorCode is 0 /* success */
-                    ? fileHandleType = (type, null)
-                    : fileHandleType = (null, err);
-            }
-            else
-            {
-                return fileHandleType;
-            }
-        }
-    }
-
-    public unsafe (string? v, Exception? ex) FileNameInfo
-    {
-        get
-        {
-            if (fileNameInfo is (null, null))
-            {
-                const string unableErrMsg = "Unable to query " + nameof(FileNameInfo) + "; ";
-                if (ProcessInfo.ProcessProtection.ex is not null)
-                    return fileNameInfo = (null, new NullReferenceException(unableErrMsg + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
-                if (ProcessInfo.ProcessProtection.v?.Type is not PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone)
-                    return fileNameInfo = (null, new UnauthorizedAccessException(unableErrMsg + "The process's protection prohibits querying a file handle's FILE_NAME_INFO."));
-                if (FileHandleType.v is not FileType.Disk)
-                    return fileNameInfo = (null, new InvalidOperationException(unableErrMsg + "FileNameInfo can only be queried for disk-type file handles."));
-
-                /* Get fni.FileNameLength */
-                FILE_NAME_INFO fni = default;
-                int fniSize = Marshal.SizeOf(fni);
-                int bufferLength = default;
-                //TODO: remove task
-                using CancellationTokenSource cancellationTokenSource = new(50);
-                Task<FILE_NAME_INFO> taskGetInfo = new(() =>
-                {
-                    FILE_NAME_INFO fni = default;
-                    _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
-                    return fni;
-                }, cancellationTokenSource.Token);
-
-                const int taskTimedOut = -1;
-                try
-                {
-                    if (Task.WaitAny(new Task[] { taskGetInfo }, 50) is taskTimedOut)
-                    {
-                        return fileNameInfo = (null, new TimeoutException("GetFileInformationByHandleEx did not respond within 50ms."));
-                    }
-                    else
-                    {
-                        bufferLength = (int)(taskGetInfo.Result.FileNameLength + fniSize);
-                    }
-                }
-                catch (AggregateException ae)
-                {
-                    foreach (Exception e in ae.InnerExceptions)
-                    {
-                        if (e is TaskCanceledException)
-                            return fileNameInfo = (null, e);
-                    }
-                }
-
-                /* Get FileNameInfo */
-                FILE_NAME_INFO* buffer = (FILE_NAME_INFO*)Marshal.AllocHGlobal(bufferLength);
-                using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
-
-                if (GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, buffer, (uint)bufferLength))
-                {
-                    UNICODE_STRING str = new()
-                    {
-                        Buffer = new PWSTR((char*)safeBuffer.DangerousGetHandle()),
-                        Length = (ushort)fni.FileNameLength,
-                        MaximumLength = (ushort)bufferLength
-                    };
-
-                    /* The string conversion copies the data to a new string in the managed heap before freeing safeBuffer and leaving this context. */
-                    return fileNameInfo = ((string)str, null);
-                }
-                else
-                {
-                    return fileNameInfo = (null, new Exception("Failed to query FileNameInfo; GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
-                }
-            }
-            else
-            {
-                return fileNameInfo;
             }
         }
     }
@@ -353,6 +274,43 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
+    /// <summary>
+    /// If the handle object's Type is "File", the type of the File object<br/>
+    /// -OR-<br/>
+    /// An exception if the P/Invoke operation failed or the object's Type is not "File".
+    /// </summary>
+    public (FileType? v, Exception? ex) FileHandleType
+    {
+        get
+        {
+            if (fileHandleType is (null, null))
+            {
+                const string unableErr = "Unable to query FileHandleType; ";
+                if (ProcessInfo.ProcessProtection.ex is not null)
+                    return fileHandleType = (null, new NullReferenceException(unableErr + "Failed to query the process's protection level."));
+                if (ProcessInfo.ProcessProtection.ex is not null)
+                    return fileHandleType = (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits this operation."));
+                if (IsFileHandle.v is not true)
+                    return fileHandleType = (null, new InvalidOperationException(unableErr + "This operation is only valid on File handles."));
+
+                FileType type = (FileType)GetFileType(handle);
+                if (type is FileType.Unknown)
+                {
+                    Win32Exception err = new();
+                    return err.NativeErrorCode is Win32ErrorCode.ERROR_SUCCESS ? (fileHandleType = (null, err)) : (fileHandleType = (type, null));
+                }
+                else
+                {
+                    return fileHandleType = (type, null);
+                }
+            }
+            else
+            {
+                return fileHandleType;
+            }
+        }
+    }
+
     // TODO: leverage GetFileInformationByHandleEx
     public (string? v, Exception? ex) FileName
     {
@@ -380,32 +338,83 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    public (bool? v, Exception? ex) IsDirectory
+    public unsafe (string? v, Exception? ex) FileNameInfo
     {
         get
         {
-            if (isDirectory is (null, null))
+            if (fileNameInfo is (null, null))
             {
-                if (FileFullPath != default && FileFullPath.v != null) // The comparison *should* cause FileFullPath to initialize.
+                const string unableErrMsg = "Unable to query " + nameof(FileNameInfo) + "; ";
+                if (ProcessInfo.ProcessProtection.ex is not null)
+                    return fileNameInfo = (null, new NullReferenceException(unableErrMsg + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
+                if (ProcessInfo.ProcessProtection.v?.Type is not PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone)
+                    return fileNameInfo = (null, new UnauthorizedAccessException(unableErrMsg + "The process's protection prohibits querying a file handle's FILE_NAME_INFO."));
+                if (FileHandleType.v is not FileType.Disk)
+                    return fileNameInfo = (null, new InvalidOperationException(unableErrMsg + "FileNameInfo can only be queried for disk-type file handles."));
+
+                /* Get fni.FileNameLength */
+                FILE_NAME_INFO fni = default;
+                int fniSize = Marshal.SizeOf(fni);
+                int bufferLength = default;
+                //TODO: remove task
+                using CancellationTokenSource cancellationTokenSource = new(50);
+                Task<FILE_NAME_INFO> taskGetInfo = new(() =>
                 {
-                    try
+                    FILE_NAME_INFO fni = default;
+                    _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
+                    return fni;
+                }, cancellationTokenSource.Token);
+
+                const int taskTimedOut = -1;
+                try
+                {
+                    if (Task.WaitAny(new Task[] { taskGetInfo }, 50) is taskTimedOut)
                     {
-                        return isDirectory = ((File.GetAttributes(FileFullPath.v) & FileAttributes.Directory) == FileAttributes.Directory, null);
+                        return fileNameInfo = (null, new TimeoutException("GetFileInformationByHandleEx did not respond within 50ms."));
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        return isDirectory = (null, ex);
+                        bufferLength = (int)(taskGetInfo.Result.FileNameLength + fniSize);
+                    }
+                }
+                catch (AggregateException ae)
+                {
+                    foreach (Exception e in ae.InnerExceptions)
+                    {
+                        if (e is TaskCanceledException)
+                            return fileNameInfo = (null, e);
                     }
                 }
 
-                return isDirectory = (null, new InvalidOperationException("Unable to query IsDirectory; This operation requires FileFullPath."));
+                /* Get FileNameInfo */
+                FILE_NAME_INFO* buffer = (FILE_NAME_INFO*)Marshal.AllocHGlobal(bufferLength);
+                using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
+
+                if (GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, buffer, (uint)bufferLength))
+                {
+                    UNICODE_STRING str = new()
+                    {
+                        Buffer = new PWSTR((char*)safeBuffer.DangerousGetHandle()),
+                        Length = (ushort)fni.FileNameLength,
+                        MaximumLength = (ushort)bufferLength
+                    };
+
+                    /* The string conversion copies the data to a new string in the managed heap before freeing safeBuffer and leaving this context. */
+                    return fileNameInfo = ((string)str, null);
+                }
+                else
+                {
+                    return fileNameInfo = (null, new Exception("Failed to query FileNameInfo; GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
+                }
             }
             else
             {
-                return isDirectory;
+                return fileNameInfo;
             }
         }
     }
+
+    #endregion Properties
 
     public enum FileType : uint
     {
