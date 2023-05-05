@@ -357,8 +357,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
 
                 /** Get FileNameInfo */
-                int fniSize = Marshal.SizeOf(fni);
-                int bufferLength = (int)(fni.FileNameLength + fniSize);
+                int bufferLength = (int)(fni.FileNameLength + Marshal.SizeOf(fni));
                 using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
 
                 if (GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, (FILE_NAME_INFO*)safeBuffer.DangerousGetHandle(), (uint)bufferLength))
