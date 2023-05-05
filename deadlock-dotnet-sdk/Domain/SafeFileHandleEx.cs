@@ -359,10 +359,9 @@ public class SafeFileHandleEx : SafeHandleEx
                 /** Get FileNameInfo */
                 int fniSize = Marshal.SizeOf(fni);
                 int bufferLength = (int)(fni.FileNameLength + fniSize);
-                FILE_NAME_INFO* buffer = (FILE_NAME_INFO*)Marshal.AllocHGlobal(bufferLength);
                 using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
 
-                if (GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, buffer, (uint)bufferLength))
+                if (GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, (FILE_NAME_INFO*)safeBuffer.DangerousGetHandle(), (uint)bufferLength))
                 {
                     UNICODE_STRING str = new()
                     {
