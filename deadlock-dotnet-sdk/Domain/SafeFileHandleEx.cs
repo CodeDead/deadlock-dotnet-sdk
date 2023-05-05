@@ -157,7 +157,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 try
                 {
                     const string errUnableMsg = "Unable to query " + nameof(FileFullPath) + "; ";
-                    const string errFailMsg = "Failed to query " + nameof(FileFullPath) + "; ";
+                    const string errFailedMsg = "Failed to query " + nameof(FileFullPath) + "; ";
                     if (ProcessInfo.ProcessProtection.v is null)
                         return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query the process's protection.", ProcessInfo.ProcessProtection.ex));
                     if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
@@ -204,12 +204,12 @@ public class SafeFileHandleEx : SafeHandleEx
                             return fileFullPath = (null, errorCode switch
                             {
                                 // Removable storage, deleted item, network shares, et cetera
-                                Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException(errFailMsg + $"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(errorCode)),
+                                Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException(errFailedMsg + $"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(errorCode)),
                                 // unlikely, but possible if system has little free memory
-                                Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException(errFailMsg + "Insufficient memory to complete the operation.", new Win32Exception(errorCode)),
+                                Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException(errFailedMsg + "Insufficient memory to complete the operation.", new Win32Exception(errorCode)),
                                 // possible only if FILE_NAME_NORMALIZED (0) is invalid
-                                Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags.", new Win32Exception(errorCode)),
-                                _ => new Exception($"An undocumented error ({errorCode}) was returned when querying a file handle for its path.", new Win32Exception(errorCode))
+                                Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException(errFailedMsg + "Invalid flags were specified for dwFlags.", new Win32Exception(errorCode)),
+                                _ => new Exception($"{errFailedMsg}An undocumented error ({errorCode}) was returned when querying a file handle for its path.", new Win32Exception(errorCode))
                             });
                         }
                     }
@@ -285,24 +285,24 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (fileHandleType is (null, null))
             {
-                const string unableErr = "Unable to query FileHandleType; ";
+                const string errUnableMsg = "Unable to query " + nameof(FileHandleType) + "; ";
+                const string errFailedMsg = "Failed to query " + nameof(FileHandleType) + "; ";
                 if (ProcessInfo.ProcessProtection.ex is not null)
-                    return fileHandleType = (null, new NullReferenceException(unableErr + "Failed to query the process's protection level."));
+                    return fileHandleType = (null, new NullReferenceException(errUnableMsg + "Failed to query the process's protection level."));
                 if (ProcessInfo.ProcessProtection.ex is not null)
-                    return fileHandleType = (null, new UnauthorizedAccessException(unableErr + "The process's protection prohibits this operation."));
+                    return fileHandleType = (null, new UnauthorizedAccessException(errUnableMsg + "The process's protection prohibits this operation."));
                 if (IsFileHandle.v is not true)
-                    return fileHandleType = (null, new InvalidOperationException(unableErr + "This operation is only valid on File handles."));
+                    return fileHandleType = (null, new InvalidOperationException(errUnableMsg + "This operation is only valid on File handles."));
 
                 FileType type = (FileType)GetFileType(handle);
                 if (type is FileType.Unknown)
                 {
-                    Win32Exception err = new();
-                    return err.NativeErrorCode is Win32ErrorCode.ERROR_SUCCESS ? (fileHandleType = (null, err)) : (fileHandleType = (type, null));
+                    Win32ErrorCode err = (Win32ErrorCode)Marshal.GetLastPInvokeError();
+                    if (err is not Win32ErrorCode.ERROR_SUCCESS)
+                        return fileHandleType = (null, new Win32Exception(err, errFailedMsg + err.GetMessage()));
                 }
-                else
-                {
-                    return fileHandleType = (type, null);
-                }
+
+                return fileHandleType = (type, null);
             }
             else
             {
@@ -318,6 +318,7 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (fileName is (null, null))
             {
+                const string errUnableMsg = "Unable to query " + nameof(FileName) + "; ";
                 if (FileFullPath.v is not null)
                 {
                     return fileName = (Path.GetFileName(FileFullPath.v), null);
@@ -328,7 +329,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 }
                 else
                 {
-                    return fileName = (null, new InvalidOperationException("Unable to query FileName; This operation requires FileFullPath."));
+                    return fileName = (null, new InvalidOperationException(errUnableMsg + "This operation requires FileFullPath or ObjectName."));
                 }
             }
             else
@@ -344,13 +345,14 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (fileNameInfo is (null, null))
             {
-                const string unableErrMsg = "Unable to query " + nameof(FileNameInfo) + "; ";
+                const string errUnableMsg = "Unable to query " + nameof(FileNameInfo) + "; ";
+                const string errFailedMsg = "Failed to query " + nameof(FileNameInfo) + "; ";
                 if (ProcessInfo.ProcessProtection.ex is not null)
-                    return fileNameInfo = (null, new NullReferenceException(unableErrMsg + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
+                    return fileNameInfo = (null, new NullReferenceException(errUnableMsg + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
                 if (ProcessInfo.ProcessProtection.v?.Type is not PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone)
-                    return fileNameInfo = (null, new UnauthorizedAccessException(unableErrMsg + "The process's protection prohibits querying a file handle's FILE_NAME_INFO."));
+                    return fileNameInfo = (null, new UnauthorizedAccessException(errUnableMsg + "The process's protection prohibits querying a file handle's FILE_NAME_INFO."));
                 if (FileHandleType.v is not FileType.Disk)
-                    return fileNameInfo = (null, new InvalidOperationException(unableErrMsg + "FileNameInfo can only be queried for disk-type file handles."));
+                    return fileNameInfo = (null, new InvalidOperationException(errUnableMsg + "FileNameInfo can only be queried for disk-type file handles."));
 
                 /** Get fni.FileNameLength */
                 FILE_NAME_INFO fni = default;
@@ -374,7 +376,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 }
                 else
                 {
-                    return fileNameInfo = (null, new Exception("Failed to query FileNameInfo; GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
+                    return fileNameInfo = (null, new Exception(errFailedMsg + "GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
                 }
             }
             else
