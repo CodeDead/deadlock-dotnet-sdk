@@ -70,19 +70,19 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (isDirectory is (null, null))
             {
-                if (FileFullPath != default && FileFullPath.v != null) // The comparison *should* cause FileFullPath to initialize.
+                const string errFailedMsg = "Failed to query " + nameof(IsDirectory) + "; ";
+                FILE_ATTRIBUTE_TAG_INFO attr = default;
+                bool success;
+                unsafe
                 {
-                    try
-                    {
-                        return isDirectory = ((File.GetAttributes(FileFullPath.v) & FileAttributes.Directory) == FileAttributes.Directory, null);
-                    }
-                    catch (Exception ex)
-                    {
-                        return isDirectory = (null, ex);
-                    }
+                    success = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileAttributeTagInfo, &attr, (uint)Marshal.SizeOf(attr));
                 }
 
-                return isDirectory = (null, new InvalidOperationException("Unable to query IsDirectory; This operation requires FileFullPath."));
+                if (success)
+                    return isDirectory = ((attr.FileAttributes & (uint)FileAttributes.Directory) != 0, null);
+
+                Win32ErrorCode err = (Win32ErrorCode)Marshal.GetLastPInvokeError();
+                return isDirectory = (null, new Win32Exception(err, errFailedMsg + err.GetMessage()));
             }
             else
             {

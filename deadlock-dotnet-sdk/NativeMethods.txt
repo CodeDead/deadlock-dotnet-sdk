@@ -84,3 +84,4 @@ SE_DEBUG_NAME
 //PsProtectedTypeProtected // PInvoke001: Method, type or constant "PsProtectedTypeProtected" not found
 FILE_NAME_INFO
 FILE_REMOTE_PROTOCOL_INFO
+FILE_ATTRIBUTE_TAG_INFO
