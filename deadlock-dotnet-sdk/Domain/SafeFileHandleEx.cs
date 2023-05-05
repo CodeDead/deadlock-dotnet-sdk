@@ -352,41 +352,13 @@ public class SafeFileHandleEx : SafeHandleEx
                 if (FileHandleType.v is not FileType.Disk)
                     return fileNameInfo = (null, new InvalidOperationException(unableErrMsg + "FileNameInfo can only be queried for disk-type file handles."));
 
-                /* Get fni.FileNameLength */
+                /** Get fni.FileNameLength */
                 FILE_NAME_INFO fni = default;
+                _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
+
+                /** Get FileNameInfo */
                 int fniSize = Marshal.SizeOf(fni);
-                int bufferLength = default;
-                //TODO: remove task
-                using CancellationTokenSource cancellationTokenSource = new(50);
-                Task<FILE_NAME_INFO> taskGetInfo = new(() =>
-                {
-                    FILE_NAME_INFO fni = default;
-                    _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
-                    return fni;
-                }, cancellationTokenSource.Token);
-
-                const int taskTimedOut = -1;
-                try
-                {
-                    if (Task.WaitAny(new Task[] { taskGetInfo }, 50) is taskTimedOut)
-                    {
-                        return fileNameInfo = (null, new TimeoutException("GetFileInformationByHandleEx did not respond within 50ms."));
-                    }
-                    else
-                    {
-                        bufferLength = (int)(taskGetInfo.Result.FileNameLength + fniSize);
-                    }
-                }
-                catch (AggregateException ae)
-                {
-                    foreach (Exception e in ae.InnerExceptions)
-                    {
-                        if (e is TaskCanceledException)
-                            return fileNameInfo = (null, e);
-                    }
-                }
-
-                /* Get FileNameInfo */
+                int bufferLength = (int)(fni.FileNameLength + fniSize);
                 FILE_NAME_INFO* buffer = (FILE_NAME_INFO*)Marshal.AllocHGlobal(bufferLength);
                 using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
 
