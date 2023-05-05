@@ -30,8 +30,9 @@ public class SafeFileHandleEx : SafeHandleEx
     private (FileType? v, Exception? ex) fileHandleType;
     private (string? v, Exception? ex) fileName;
     private (string? v, Exception? ex) fileNameInfo;
+    //private (FileShare? v, Exception? ex) fileShareAccess; // see property
 
-    // TODO: there's gotta be a better way to cast a base class to an implementing class
+    // TODO: there's gotta be a better way to cast a base class to an inheriting class
     internal SafeFileHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
     { }
 
@@ -385,6 +386,13 @@ public class SafeFileHandleEx : SafeHandleEx
             }
         }
     }
+
+    public Kernel32.HandleFlags HandleAttributes => SysHandleEx.HandleAttributes;
+
+    /// <summary>
+    /// Inaccessible by user code; Only available to kernel-mode drivers; <see href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocheckshareaccessex"/>
+    /// </summary>
+    //public unsafe (FileShare? v, Exception? ex) FileShareAccess { get { if (fileShareAccess is (null, null)) { _ } else { return fileShareAccess; } } }
 
     #endregion Properties
 
