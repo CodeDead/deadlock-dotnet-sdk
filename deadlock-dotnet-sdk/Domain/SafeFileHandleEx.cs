@@ -319,6 +319,7 @@ public class SafeFileHandleEx : SafeHandleEx
             if (fileName is (null, null))
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileName) + "; ";
+                const string errFailedMsg = "Failed to query " + nameof(FileName) + "; ";
                 if (FileFullPath.v is not null)
                 {
                     getFileOrDirectoryName(FileFullPath.v);
@@ -345,7 +346,7 @@ public class SafeFileHandleEx : SafeHandleEx
                     if (tmp.Length is 0)
                     {
                         fileName = (tmp = Path.GetDirectoryName(path)) is null
-                            ? (null, new InvalidOperationException(errUnableMsg + $"'{path}' could not be processed for a file or directory name."))
+                            ? (null, new InvalidOperationException(errFailedMsg + $"'{path}' could not be processed for a file or directory name."))
                             : (tmp, null);
                     }
                     else
