@@ -35,7 +35,9 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
     public nuint Object { get; }
     /// <summary>ULONG_PTR, cast to HANDLE, int, or uint</summary>
     public nuint UniqueProcessId { get; }
+    public uint ProcessId => (uint)UniqueProcessId;
     /// <summary>ULONG_PTR, cast to HANDLE</summary>
+    [DebuggerDisplay("0x{Value} ({Value:D})")]
     public HANDLE HandleValue { get; }
     /// <summary>Get the HandleValue as a SafeObjectHandle. Closing this SafeObjectHandle does *not* close the source handle.</summary>
     public SafeObjectHandle GetSafeHandle() => new(HandleValue, false);
