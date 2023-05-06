@@ -312,7 +312,6 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    // TODO: leverage GetFileInformationByHandleEx
     public (string? v, Exception? ex) FileName
     {
         get
@@ -322,15 +321,37 @@ public class SafeFileHandleEx : SafeHandleEx
                 const string errUnableMsg = "Unable to query " + nameof(FileName) + "; ";
                 if (FileFullPath.v is not null)
                 {
-                    return fileName = (Path.GetFileName(FileFullPath.v), null);
+                    getFileOrDirectoryName(FileFullPath.v);
+                    return fileName;
+                }
+                else if (FileNameInfo.v is not null)
+                {
+                    getFileOrDirectoryName(FileNameInfo.v);
+                    return fileName;
                 }
                 else if (ObjectName.v is not null)
                 {
-                    return fileName = (Path.GetFileName(ObjectName.v), null);
+                    getFileOrDirectoryName(ObjectName.v);
+                    return fileName;
                 }
                 else
                 {
-                    return fileName = (null, new InvalidOperationException(errUnableMsg + "This operation requires FileFullPath or ObjectName."));
+                    return fileName = (null, new InvalidOperationException(errUnableMsg + "This operation requires FileFullPath, FileNameInfo, or ObjectName."));
+                }
+
+                void getFileOrDirectoryName(string path)
+                {
+                    string? tmp = Path.GetFileName(path);
+                    if (tmp.Length is 0)
+                    {
+                        fileName = (tmp = Path.GetDirectoryName(path)) is null
+                            ? (null, new InvalidOperationException(errUnableMsg + $"'{path}' could not be processed for a file or directory name."))
+                            : (tmp, null);
+                    }
+                    else
+                    {
+                        fileName = (tmp, null);
+                    }
                 }
             }
             else
