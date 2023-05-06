@@ -4,8 +4,7 @@ using System.Text;
 namespace deadlock_dotnet_sdk.Domain
 {
     //TODO: Add RefreshList(). This should clear Lockers and call FindLockingHandles again.
-    //TODO: If a handle is closed or invalid, remove if from Lockers. SafeHandle.IsClosed is unreliable—it only works on handles managed by the current process.
-    //TODO: feat: finalize OrderBy parameters
+    //TODO: If a handle is closed or invalid, remove it from Lockers. SafeHandle.IsClosed is unreliable—it only works on handles managed by the current process.
     //https://sourcegraph.com/github.com/dotnet/runtime@main/-/blob/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/SafeHandle.cs
     public class FileLockerEx
     {
@@ -23,7 +22,7 @@ namespace deadlock_dotnet_sdk.Domain
         public enum SortByProperty
         {
             /// <summary>NOT IMPLEMENTED</summary>
-            FileShareAccess, // oh, this is important! Note: System Informer seems to crash when evaluating this property // TODO: implement FileShareAccess property
+            //FileShareAccess, // oh, this is important! Note: System Informer seems to crash when evaluating this property // not possible without a kernel mode driver; see IoCheckShareAccess
             HandleAttributes,
             HandleSubType,
             HandleType,
@@ -33,7 +32,7 @@ namespace deadlock_dotnet_sdk.Domain
             /// <summary>The string returned to the ObjectName property via NtQueryObject.</summary>
             ObjectOriginalName,
             /// <summary>
-            /// (NOT IMPLEMENTED)
+            /// (PARTIALLY IMPLEMENTED)
             /// Differs from ObjectName for types {File, (Registry) Key}
             /// </summary>
             /// TODO: get 'real' paths e.g. "\REGISTRY\MACHINE" -> "HKLM"
