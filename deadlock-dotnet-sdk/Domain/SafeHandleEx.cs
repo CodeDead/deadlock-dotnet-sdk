@@ -28,7 +28,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     protected (string? v, Exception? ex) handleObjectType;
     private bool isClosed;
     protected (string? v, Exception? ex) objectName;
-    private ProcessInfo? processInfo;
+    protected ProcessInfo? processInfo;
 
     public SafeHandleEx(SafeHandleEx safeHandleEx) : this(safeHandleEx.SysHandleEx)
     { }
