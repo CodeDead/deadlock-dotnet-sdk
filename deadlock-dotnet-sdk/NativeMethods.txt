@@ -50,6 +50,19 @@ RmEndSession
 RmGetList
 RmRegisterResources
 RmStartSession
+SetHandleInformation
+
+//// Security ////
+GENERIC_MAPPING
+
+//// Security.Apis ////
+SE_DEBUG_NAME
+
+//// Storage.FileSystem ////
+FILE_ATTRIBUTE_TAG_INFO
+FILE_NAME_INFO
+FILE_REMOTE_PROTOCOL_INFO
+
 
 //// System.Memory ////
 MEMORY_BASIC_INFORMATION32
@@ -61,6 +74,7 @@ PROCESS_BASIC_INFORMATION
 PROCESSINFOCLASS
 
 //// System.WindowsProgramming ////
+LDR_DATA_TABLE_ENTRY
 PUBLIC_OBJECT_TYPE_INFORMATION
 
 //// does not exist in Win32Metadata ////
@@ -73,15 +87,10 @@ PUBLIC_OBJECT_TYPE_INFORMATION
 //MEMORY_BASIC_INFORMATION
 //VirtualQuery
 
-GENERIC_MAPPING
-LDR_DATA_TABLE_ENTRY
-RTL_CRITICAL_SECTION
+//// PInvoke001: Method, type or constant not found.
+//ProcessProtectionInformation
+//PS_PROTECTION
+//PsProtectedTypeProtected
+//SE_DEBUG_PRIVILEGE
 
-//SE_DEBUG_PRIVILEGE // PInvoke001
-SE_DEBUG_NAME
-//ProcessProtectionInformation // PInvoke001: Method, type or constant "ProcessProtectionInformation" not found.
-//PS_PROTECTION //  PInvoke001: Method, type or constant "PS_PROTECTION" not found.
-//PsProtectedTypeProtected // PInvoke001: Method, type or constant "PsProtectedTypeProtected" not found
-FILE_NAME_INFO
-FILE_REMOTE_PROTOCOL_INFO
-FILE_ATTRIBUTE_TAG_INFO
+RTL_CRITICAL_SECTION
