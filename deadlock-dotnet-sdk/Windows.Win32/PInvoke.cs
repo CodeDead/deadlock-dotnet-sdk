@@ -208,5 +208,9 @@ static partial class PInvoke
     public static SafeFileHandle OpenProcessToken(SafeFileHandle ProcessHandle, TOKEN_ACCESS_MASK DesiredAccess)
         => OpenProcessToken(ProcessHandle, DesiredAccess, out SafeFileHandle TokenHandle) ? TokenHandle : throw new Win32Exception();
 
+    /// <summary>Get the handle's flags/attributes.</summary>
+    /// <param name="hObject"><inheritdoc cref="GetHandleInformation(HANDLE, uint*)" path="/param[@name='hObject']"/></param>
+    /// <returns>A copy of the handle's current flags/attributes as <see cref="HANDLE_FLAGS"/></returns>
+    /// <exception cref="Win32Exception">The P/Invoke operation failed.</exception>
     public static HANDLE_FLAGS GetHandleInformation(SafeHandle hObject) => GetHandleInformation(hObject, out uint flags) ? (HANDLE_FLAGS)flags : throw new Win32Exception();
 }

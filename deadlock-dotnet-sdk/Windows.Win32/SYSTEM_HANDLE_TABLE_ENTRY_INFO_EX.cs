@@ -80,6 +80,11 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
             : throw new NTStatusException(status);
     }
 
+    /// <summary>
+    /// Get the current HANDLE_FLAGS of this handle if it is still open.
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="Win32Exception">Failed to get handle information -OR- failed to open process to duplicate handle.</exception>
     public unsafe HANDLE_FLAGS GetHandleInfo()
     {
         try
