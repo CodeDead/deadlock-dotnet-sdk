@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using PInvoke;
 using Windows.Win32;
@@ -188,7 +189,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     #region Methods
 
     /// <summary>
-    /// Release the system handle.<br/>
+    /// Release the system handle. If the handle has the HANDLE_FLAG_PROTECT_FROM_CLOSE attribute, the operation fails.<br/>
     /// ! WARNING !<br/>
     /// If the handle or a duplicate is in use by a driver or other kernel-level software, a function that accesses the now-invalid handle will cause a stopcode (AKA Blue Screen Of Death).
     /// </summary>
@@ -196,10 +197,30 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// See Raymond Chen's devblog article <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
     /// </remarks>
     /// <exception cref="Win32Exception">Failed to open process to duplicate and close object handle.</exception>
-    public bool CloseSourceHandle()
+    public bool CloseSourceHandle() => CloseSourceHandle(false);
+
+    /// <summary>
+    /// Release the system handle.<br/>
+    /// ! WARNING !<br/>
+    /// If the handle or a duplicate is in use by a driver or other kernel-level software, a function that accesses the now-invalid handle will cause a stopcode (AKA Blue Screen Of Death).
+    /// </summary>
+    /// <param name="removeCloseProtection">Some handles have the HANDLE_FLAG_PROTECT_FROM_CLOSE attribute. In this case, the attribute must be removed for the handle to be closed. Otherwise, the operation will fail. This parameter is made available to allow</param>
+    /// <remarks>
+    /// See Raymond Chen's devblog article <see href="https://devblogs.microsoft.com/oldnewthing/20070829-00/?p=25363">"Kernel handles are not reference-counted"</see>.
+    /// </remarks>
+    /// <exception cref="Win32Exception">Failed to open process to duplicate and close object handle.</exception>
+    public bool CloseSourceHandle(bool removeCloseProtection)
     {
         try
         {
+            if (removeCloseProtection
+                && ((SysHandleEx.HandleAttributes & Kernel32.HandleFlags.HANDLE_FLAG_PROTECT_FROM_CLOSE) is not 0)
+                && !SetHandleInformation(this, (uint)HANDLE_FLAGS.HANDLE_FLAG_PROTECT_FROM_CLOSE, 0))
+            {
+                Win32ErrorCode err = (Win32ErrorCode)Marshal.GetLastPInvokeError();
+                throw new PInvoke.Win32Exception(err, "Failed to remove HANDLE_FLAG_PROTECT_FROM_CLOSE attribute; " + err.GetMessage());
+            }
+
             HANDLE rawHProcess;
             using SafeProcessHandle hProcess = new(
                 !(rawHProcess = OpenProcess(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, true, ProcessId)).IsNull

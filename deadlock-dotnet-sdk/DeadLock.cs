@@ -312,7 +312,7 @@ namespace deadlock_dotnet_sdk
                 if (h.IsClosed && h.IsInvalid) continue;
                 try
                 {
-                    h.CloseSourceHandle();
+                    h.CloseSourceHandle(true);
                 }
                 catch (Exception) when (!RethrowExceptions) { }
             }
@@ -347,7 +347,7 @@ namespace deadlock_dotnet_sdk
                     if (h.IsClosed && h.IsInvalid) continue;
                     try
                     {
-                        h.CloseSourceHandle();
+                        h.CloseSourceHandle(true);
                     }
                     catch (Exception) when (!RethrowExceptions) { }
                 }
@@ -369,7 +369,7 @@ namespace deadlock_dotnet_sdk
                         if (h.IsClosed && h.IsInvalid) continue;
                         try
                         {
-                            h.CloseSourceHandle();
+                            h.CloseSourceHandle(true);
                         }
                         catch (Exception) when (!RethrowExceptions) { }
                     }
