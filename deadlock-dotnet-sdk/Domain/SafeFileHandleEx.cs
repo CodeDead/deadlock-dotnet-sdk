@@ -206,7 +206,6 @@ public class SafeFileHandleEx : SafeHandleEx
                     const uint LengthIndicatesError = 0;
 
                     // Try without duplicating. If it fails, try duplicating the handle.
-                    Stopwatch sw = Stopwatch.StartNew();
                     try
                     {
                         GETFINALPATHNAMEBYHANDLE_FLAGS flags = IsFilePathRemote.v is true ? GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_OPENED : GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED;
@@ -247,11 +246,6 @@ public class SafeFileHandleEx : SafeHandleEx
                     catch (Exception ex)
                     {
                         return fileFullPath = (null, ex);
-                    }
-                    finally
-                    {
-                        sw.Stop();
-                        Console.WriteLine($"(handle 0x{handle:X}) TryGetFinalPath time: {sw.Elapsed}");
                     }
 
                     /// Return the normalized drive name. This is the default.
