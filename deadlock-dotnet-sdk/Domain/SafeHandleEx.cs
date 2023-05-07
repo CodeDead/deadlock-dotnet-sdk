@@ -14,7 +14,6 @@ using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace deadlock_dotnet_sdk.Domain;
 
-//TODO: check if handle is closed. If true, FileLockerEx can remove this object from its locker list. See relevant TODO in FileLockerEx
 /// <summary>
 /// A SafeHandleZeroOrMinusOneIsInvalid wrapping a SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX<br/>
 /// Before querying for system handles, call <see cref="Process.EnterDebugMode()"/>
@@ -24,7 +23,9 @@ namespace deadlock_dotnet_sdk.Domain;
 /// </summary>
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
+    protected const string errHandleClosedMsgSuffix = "The handle is closed.";
     protected (string? v, Exception? ex) handleObjectType;
+    private bool isClosed;
     protected (string? v, Exception? ex) objectName;
     private ProcessInfo? processInfo;
 
@@ -57,10 +58,14 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             if (handleObjectType is (null, null))
             {
+                const string errUnableMsg = "Unable to query " + nameof(HandleObjectType) + "; ";
+                const string errFailedMsg = "Failed to query " + nameof(HandleObjectType) + "; ";
+                if (IsClosed)
+                    return handleObjectType = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 var (v, ex) = ProcessInfo.ProcessProtection;
                 if (v is null)
                 {
-                    return handleObjectType = (null, new InvalidOperationException("Unable to query the kernel object's Type; Failed to query the process's protection:\r\n" + ex, ex));
+                    return handleObjectType = (null, new InvalidOperationException(errUnableMsg + "Failed to query the process's protection.", ex));
                 }
                 else if (v.Value.Type is PsProtectedTypeNone or PsProtectedTypeProtectedLight)
                 {
@@ -70,12 +75,12 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                     }
                     catch (Exception e)
                     {
-                        return handleObjectType = (null, e);
+                        return handleObjectType = (null, new InvalidOperationException(errFailedMsg + e.Message, e));
                     }
                 }
                 else
                 {
-                    return handleObjectType = (null, new UnauthorizedAccessException("Unable to query the kernel object's Type; The process is protected."));
+                    return handleObjectType = (null, new UnauthorizedAccessException(errUnableMsg + "The process is protected."));
                 }
             }
             else
@@ -88,7 +93,13 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// (non-persistent) Pass the handle to GetHandleInformation and check for ERROR_INVALID_HANDLE to determine if the handle is open or closed.
     /// </summary>
-    public new bool IsClosed => GetIsClosed();
+    public new bool IsClosed
+    {
+        get
+        {
+            return isClosed ? isClosed : (isClosed = GetIsClosed());
+        }
+    }
 
     private bool GetIsClosed()
     {
@@ -96,12 +107,15 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         {
             HANDLE_FLAGS flags = GetHandleInformation(this);
         }
-        catch (PInvoke.Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_HANDLE)
+        catch (Exception ex) when (
+               (ex is Win32Exception inWin32Exception && inWin32Exception.NativeErrorCode is (int)Win32ErrorCode.ERROR_INVALID_HANDLE)
+            || (ex is PInvoke.Win32Exception piWin32Exception && piWin32Exception.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_HANDLE))
         {
             return true;
         }
-        catch (PInvoke.Win32Exception ex)
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"GetIsClosed failed; {ex.ToString}");
             Trace.TraceError(ex.ToString());
         }
         return false;
@@ -122,10 +136,12 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         get
         {
-            if (objectName == default)
+            if (objectName is (null, null))
             {
                 const string errUnableMsg = "Unable to query " + nameof(ObjectName) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(ObjectName) + "; ";
+                if (IsClosed)
+                    return objectName = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 var (v, ex) = ProcessInfo.ProcessProtection;
                 // I'm assuming process protection prohibits access. I've not tested it.
                 // This information is not queryable in SystemInformer when a process has Full protection.

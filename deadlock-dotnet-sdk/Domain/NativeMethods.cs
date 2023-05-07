@@ -175,6 +175,9 @@ internal static class NativeMethods
         {
             bool keep = false;
 
+            if (h.IsClosed)
+                return false;
+
             if (!string.IsNullOrEmpty(query))
             {
                 // only keep if FullFilePath contains query (with normalized directory separators)

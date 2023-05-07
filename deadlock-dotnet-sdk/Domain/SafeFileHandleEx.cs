@@ -40,6 +40,12 @@ public class SafeFileHandleEx : SafeHandleEx
     /// <param name="sysHandleEx"></param>
     internal SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(sysHandleEx: sysHandleEx)
     {
+        if (IsClosed)
+        {
+            ExceptionLog.Add(new NullReferenceException("This handle was closed before it was passed to this SafeFileHandleEx constructor."));
+            return;
+        }
+
         if (IsFileHandle.v is true)
         {
             try
@@ -71,7 +77,10 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (isDirectory is (null, null))
             {
+                const string errUnableMsg = "Unable to query " + nameof(IsDirectory) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(IsDirectory) + "; ";
+                if (IsClosed)
+                    return isDirectory = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 FILE_ATTRIBUTE_TAG_INFO attr = default;
                 bool success;
                 unsafe
@@ -92,11 +101,25 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
-    public (bool? v, Exception? ex) IsFileHandle => isFileHandle is (null, null)
-                ? HandleObjectType.v == "File"
+    public (bool? v, Exception? ex) IsFileHandle
+    {
+        get
+        {
+            if (isFileHandle is (null, null))
+            {
+                const string errUnableMsg = "Unable to query " + nameof(IsFileHandle) + "; ";
+                if (IsClosed)
+                    return isFileHandle = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
+                return HandleObjectType.v == "File"
                     ? (isFileHandle = (true, null))
-                    : (isFileHandle = (null, new Exception("Failed to determine if this handle's object is a file/directory; Failed to query the object's type.", HandleObjectType.ex)))
-                : isFileHandle;
+                    : (isFileHandle = (null, new Exception("Failed to determine if this handle's object is a file/directory; Failed to query the object's type.", HandleObjectType.ex)));
+            }
+            else
+            {
+                return isFileHandle;
+            }
+        }
+    }
 
     /// <summary>
     /// TRUE if the file object's path is a network path i.e. SMB2 network share. FALSE if the file was opened via a local disk path.
@@ -126,6 +149,11 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (isFilePathRemote is (null, null))
             {
+                const string errUnableMsg = "Unable to query " + nameof(IsFilePathRemote) + "; ";
+                const string errFailedMsg = "Failed to query " + nameof(IsFilePathRemote) + "; ";
+                if (IsClosed)
+                    return isFilePathRemote = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
+
                 Win32ErrorCode err;
                 FILE_REMOTE_PROTOCOL_INFO info;
                 unsafe
@@ -134,7 +162,7 @@ public class SafeFileHandleEx : SafeHandleEx
                         ? (isFilePathRemote = (true, null))
                         : (err = (Win32ErrorCode)Marshal.GetLastPInvokeError()) is Win32ErrorCode.ERROR_INVALID_PARAMETER
                             ? (isFilePathRemote = (false, null))
-                            : (isFilePathRemote = (null, new Win32Exception(err)));
+                            : (isFilePathRemote = (null, new Win32Exception(err, errFailedMsg + err.GetMessage())));
                 }
             }
             else
@@ -155,10 +183,12 @@ public class SafeFileHandleEx : SafeHandleEx
         {
             if (fileFullPath is (null, null))
             {
+                const string errUnableMsg = "Unable to query " + nameof(FileFullPath) + "; ";
+                const string errFailedMsg = "Failed to query " + nameof(FileFullPath) + "; ";
+                if (IsClosed)
+                    return fileFullPath = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 try
                 {
-                    const string errUnableMsg = "Unable to query " + nameof(FileFullPath) + "; ";
-                    const string errFailedMsg = "Failed to query " + nameof(FileFullPath) + "; ";
                     if (ProcessInfo.ProcessProtection.v is null)
                         return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query the process's protection.", ProcessInfo.ProcessProtection.ex));
                     if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
@@ -288,6 +318,8 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileHandleType) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(FileHandleType) + "; ";
+                if (IsClosed)
+                    return fileHandleType = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 if (ProcessInfo.ProcessProtection.ex is not null)
                     return fileHandleType = (null, new NullReferenceException(errUnableMsg + "Failed to query the process's protection level."));
                 if (ProcessInfo.ProcessProtection.ex is not null)
@@ -320,6 +352,8 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileName) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(FileName) + "; ";
+                if (IsClosed)
+                    return objectName = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 if (FileFullPath.v is not null)
                 {
                     getFileOrDirectoryName(FileFullPath.v);
@@ -370,6 +404,8 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileNameInfo) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(FileNameInfo) + "; ";
+                if (IsClosed)
+                    return objectName = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 if (ProcessInfo.ProcessProtection.ex is not null)
                     return fileNameInfo = (null, new NullReferenceException(errUnableMsg + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
                 if (ProcessInfo.ProcessProtection.v?.Type is not PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeNone)
