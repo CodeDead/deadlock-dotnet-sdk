@@ -40,50 +40,29 @@ namespace deadlock_dotnet_sdk.Domain
             ProcessId
         }
 
-        // TODO: order by Process ID and then by handle value. Later todo: allow user-specified sorting rule (e.g. by column/property)
         /// <summary>Get or set the List of handles that are locking the file</summary>
         public List<SafeFileHandleEx> Lockers
         {
             get
             {
                 return lockers
-                    .OrderBy(h =>
-                    {
-                        switch (SortByPrimary) // returns byte[]
-                        {
-                            //case SortByProperty.FileShareAccess: return h.FileShareAccess; // not possible without a kernel mode driver; see IoCheckShareAccess
-                            case SortByProperty.HandleAttributes: return Encoding.ASCII.GetBytes(h.HandleAttributes.ToString());
-                            case SortByProperty.HandleSubType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
-                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.HandleObjectType.v?.ToString() ?? string.Empty);
-                            case SortByProperty.HandleValue: return Encoding.ASCII.GetBytes(h.HandleValue.ToString());
-                            case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
-                            case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
-                            case SortByProperty.ObjectOriginalName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
-                            case SortByProperty.ObjectRealName: return Encoding.ASCII.GetBytes(h.FileFullPath.v ?? h.FileNameInfo.v ?? string.Empty); // TODO: implement Registry key parsing
-                            case SortByProperty.ObjectAddress: return BitConverter.GetBytes((ulong)h.ObjectAddress);
-                            case SortByProperty.ProcessId: return BitConverter.GetBytes(h.ProcessId);
-                            default: goto case SortByProperty.ProcessId;
-                        }
-                    })
-                    .ThenBy(h =>
-                    {
-                        switch (SortBySecondary) // returns byte[]
-                        {
-                            //case SortByProperty.FileShareAccess: return h.FileShareAccess; // not possible without a kernel mode driver; see IoCheckShareAccess
-                            case SortByProperty.HandleAttributes: return Encoding.ASCII.GetBytes(h.HandleAttributes.ToString());
-                            case SortByProperty.HandleSubType: return Encoding.ASCII.GetBytes(h.FileHandleType.v?.ToString() ?? string.Empty);
-                            case SortByProperty.HandleType: return Encoding.ASCII.GetBytes(h.HandleObjectType.v?.ToString() ?? string.Empty);
-                            case SortByProperty.HandleValue: return Encoding.ASCII.GetBytes(h.HandleValue.ToString());
-                            case SortByProperty.GrantedAccessHexadecimal: return BitConverter.GetBytes(h.GrantedAccess.Value);
-                            case SortByProperty.GrantedAccessSymbolic: return Encoding.ASCII.GetBytes(h.GrantedAccessString);
-                            case SortByProperty.ObjectOriginalName: return Encoding.ASCII.GetBytes(h.ObjectName.v ?? string.Empty);
-                            case SortByProperty.ObjectRealName: return Encoding.ASCII.GetBytes(h.FileFullPath.v ?? h.FileNameInfo.v ?? string.Empty); // TODO: implement Registry key parsing
-                            case SortByProperty.ObjectAddress: return BitConverter.GetBytes((ulong)h.ObjectAddress);
-                            case SortByProperty.ProcessId: return BitConverter.GetBytes(h.ProcessId);
-                            default: goto case SortByProperty.ProcessId;
-                        }
-                    })
+                    .OrderBy(h => SortBy(h, SortByPrimary))
+                    .ThenBy(h => SortBy(h, SortBySecondary))
                     .ToList();
+                static string SortBy(SafeFileHandleEx h, SortByProperty property) => property switch // returns string
+                {
+                    //case SortByProperty.FileShareAccess: return h.FileShareAccess; // not possible without a kernel mode driver; see IoCheckShareAccess
+                    SortByProperty.HandleAttributes => h.HandleAttributes.ToString(),
+                    SortByProperty.HandleSubType => h.FileHandleType.v?.ToString() ?? string.Empty,
+                    SortByProperty.HandleType => h.HandleObjectType.v?.ToString() ?? string.Empty,
+                    SortByProperty.HandleValue => h.HandleValue.ToString(),
+                    SortByProperty.GrantedAccessHexadecimal => h.GrantedAccess.Value.ToString(),
+                    SortByProperty.GrantedAccessSymbolic => h.GrantedAccessString,
+                    SortByProperty.ObjectOriginalName => h.ObjectName.v ?? string.Empty,
+                    SortByProperty.ObjectRealName => h.FileFullPath.v ?? h.FileNameInfo.v ?? string.Empty,// TODO: implement Registry key parsing
+                    SortByProperty.ObjectAddress => h.ObjectAddress.ToString(),
+                    _ => h.ProcessId.ToString(),
+                };
             }
         }
 
