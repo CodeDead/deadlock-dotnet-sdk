@@ -51,6 +51,7 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
     /// <summary>ProcessHacker defines a little over a dozen handle-able object types.</summary>
     public ushort ObjectTypeIndex { get; } // USHORT
     /// <summary><see href="https://docs.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_object_attributes#members"/></summary>
+    /// <remarks>Not updated when SetHandleInformation is called.</remarks>
     public HandleFlags HandleAttributes { get; } // uint
 #pragma warning disable RCS1213, CS0169, IDE0051 // Remove unused field declaration. csharp(RCS1213) | Roslynator
     private readonly uint Reserved;
@@ -99,8 +100,7 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
 
         // If passing the source handle failed, try passing a duplicate instead
 
-        using SafeProcessHandle sourceProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, (uint)UniqueProcessId);
-        if (sourceProcess is null) throw new Win32Exception();
+        using SafeProcessHandle sourceProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, (uint)UniqueProcessId) ?? throw new Win32Exception();
         using SafeObjectHandle safeHandleValue = new(HandleValue, false);
         DuplicateHandle(sourceProcess, safeHandleValue, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, default, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
         return GetHandleInformation(dupHandle);
