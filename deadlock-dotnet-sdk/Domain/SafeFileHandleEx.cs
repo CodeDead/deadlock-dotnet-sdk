@@ -412,21 +412,16 @@ public class SafeFileHandleEx : SafeHandleEx
                 _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
 
                 /** Get FileNameInfo */
-                int bufferLength = (int)(fni.FileNameLength + Marshal.SizeOf(fni));
+                int bufferLength = Marshal.SizeOf(fni.FileNameLength) + (int)fni.FileNameLength;
                 using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
 
                 if (!GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, (FILE_NAME_INFO*)safeBuffer.DangerousGetHandle(), (uint)bufferLength))
                     return fileNameInfo = (null, new Exception(errFailedMsg + "GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
 
-                UNICODE_STRING str = new()
-                {
-                    Buffer = new PWSTR((char*)(((FILE_NAME_INFO*)safeBuffer.DangerousGetHandle()) + sizeof(int))),
-                    Length = (ushort)fni.FileNameLength,
-                    MaximumLength = (ushort)(bufferLength - sizeof(int))
-                };
+                string tmp = new((char*)(safeBuffer.DangerousGetHandle() + sizeof(uint)), 0, (int)fni.FileNameLength / 2);
 
                 /* The string conversion copies the data to a new string in the managed heap before freeing safeBuffer and leaving this context. */
-                return fileNameInfo = ((string)str, null);
+                return fileNameInfo = (tmp, null);
             }
             else
             {
