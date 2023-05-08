@@ -465,7 +465,7 @@ public partial class ProcessInfo
 
                 try
                 {
-                    return processMainModulePath = (GetFullProcessImageName((uint)ProcessId), null);
+                    return processMainModulePath = (GetFullProcessImageName(), null);
                 }
                 catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_GEN_FAILURE)
                 {
@@ -518,7 +518,7 @@ public partial class ProcessInfo
     /// <exception cref="ArgumentException">The process handle <paramref name="hProcess"/> is invalid</exception>
     /// <exception cref="Win32Exception">QueryFullProcessImageName failed. See Exception message for details.</exception>
     /// <exception cref="UnauthorizedAccessException">Failed to open process handle for processId; </exception>
-    private unsafe string GetFullProcessImageName(uint processId)
+    private unsafe string GetFullProcessImageName()
     {
         //TODO: inline
         uint size = 260 + 1;
