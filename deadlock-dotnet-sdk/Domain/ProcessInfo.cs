@@ -522,7 +522,6 @@ public partial class ProcessInfo
     {
         //TODO: inline
         uint size = 260 + 1;
-        char[] array = new char[size];
         const string errUnableMsg = "Unable to query " + nameof(ProcessMainModulePath) + "; ";
 
         if (ProcessHandle.v is null)
@@ -533,8 +532,7 @@ public partial class ProcessInfo
         SafeBuffer<char> buffer = new(numElements: size);
         if (QueryFullProcessImageName(ProcessHandle.v, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, lpExeName: buffer.DangerousGetHandle(), ref size))
         {
-            buffer.ReadArray(0, array, 0, (int)size);
-            return new string(array);
+            return new string((char*)buffer.DangerousGetHandle(), 0, (int)size);
         }
         else if (buffer.ByteLength < size)
         {
@@ -545,8 +543,7 @@ public partial class ProcessInfo
                             buffer.DangerousGetHandle(),
                             ref size))
             {
-                buffer.ReadArray(0, array, 0, (int)size);
-                return new string(array);
+                return new string((char*)buffer.DangerousGetHandle(), 0, (int)size);
             }
         }
         // this constructor calls Marshal.GetLastPInvokeError() and Marshal.GetPInvokeErrorMessage(int)
