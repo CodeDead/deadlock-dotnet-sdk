@@ -71,7 +71,7 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
         while ((status = NtQueryObject(h, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, (void*)buffer.DangerousGetHandle(), (uint)buffer.ByteLength, &returnLength))
             .Code is STATUS_BUFFER_OVERFLOW or STATUS_INFO_LENGTH_MISMATCH or STATUS_BUFFER_TOO_SMALL)
         {
-            if (returnLength < buffer.ByteLength)
+            if (returnLength is 0)
                 buffer.Reallocate((nuint)(2 * buffer.ByteLength));
             else buffer.Reallocate(returnLength);
         }

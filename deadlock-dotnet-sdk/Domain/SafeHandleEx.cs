@@ -151,25 +151,25 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 else if (v.Value.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
                     return objectName = (null, new UnauthorizedAccessException(errUnableMsg + "The process's protection type prohibits access."));
 
-                uint bufferLength = 1024u;
-                using SafeBuffer<OBJECT_NAME_INFORMATION> buffer = new(numBytes: bufferLength);
+                uint returnLength = 1024u;
+                using SafeBuffer<OBJECT_NAME_INFORMATION> buffer = new(numBytes: returnLength);
                 NTSTATUS status = default;
 
                 while ((status = NtQueryObject(this,
                                                OBJECT_INFORMATION_CLASS.ObjectNameInformation,
                                                (OBJECT_NAME_INFORMATION*)buffer.DangerousGetHandle(),
-                                               bufferLength,
-                                               &bufferLength)).Code
+                                               returnLength,
+                                               &returnLength)).Code
                     is Code.STATUS_BUFFER_OVERFLOW or Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL)
                 {
-                    if (bufferLength < buffer.ByteLength)
+                    if (returnLength is 0)
                         buffer.Reallocate((uint)(buffer.ByteLength * 2));
-                    else buffer.Reallocate(bufferLength);
+                    else buffer.Reallocate(returnLength);
                 }
 
                 OBJECT_NAME_INFORMATION oni = buffer.Read<OBJECT_NAME_INFORMATION>(0);
                 if (oni.Name.Buffer.Value is null)
-                    return objectName = (null, new NullReferenceException(errFailedMsg + "Bad data was copied to the buffer. The string pointer is null."));
+                    return objectName = (null, new NullReferenceException(errFailedMsg + "The object is unnamed -OR- bad data was copied to the buffer. The string pointer is null."));
 
                 return status.IsSuccessful
                     ? objectName = (oni.NameAsString, null)

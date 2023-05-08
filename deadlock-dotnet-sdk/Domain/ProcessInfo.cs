@@ -252,7 +252,7 @@ public partial class ProcessInfo
 #endif
                     // !WARNING may throw OutOfMemoryException; ReAllocHGlobal received a null pointer, but didn't check the error code
                     // the native call to LocalReAlloc (via Marshal.ReAllocHGlobal) sometimes returns a null pointer. This is a Legacy function. Why does .NET not use malloc/realloc?
-                    if (returnLength < bufferCmdLine.ByteLength)
+                    if (returnLength is 0)
                         bufferCmdLine.Reallocate(numBytes: (nuint)(bufferCmdLine.ByteLength * 2));
                     else bufferCmdLine.Reallocate(numBytes: returnLength);
                     // none of these helped debug that internal error...
@@ -282,7 +282,7 @@ public partial class ProcessInfo
             {
                 while ((status = NtWow64QueryInformationProcess64(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, &returnLength)).Code is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
                 {
-                    if (returnLength < bufferPBI.ByteLength)
+                    if (returnLength is 0)
                         bufferPBI.Reallocate(numBytes: (nuint)(bufferPBI.ByteLength * 2));
                     else bufferPBI.Reallocate(numBytes: returnLength);
                 }
@@ -294,11 +294,10 @@ public partial class ProcessInfo
             }
             else
             {
-                while ((status = NtQueryInformationProcess(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, ref returnLength)).Code is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
+                while ((status = NtQueryInformationProcess(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, ref returnLength)).Code
+                    is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
                 {
-                    if (returnLength < bufferPBI.ByteLength)
-                        bufferPBI.Reallocate((nuint)(bufferPBI.ByteLength * 2));
-                    else bufferPBI.Reallocate((returnLength is 0 ? returnLength = (uint)(Marshal.SizeOf<PROCESS_BASIC_INFORMATION64>() * 2) : returnLength) + (uint)IntPtr.Size);
+                    bufferPBI.Reallocate(returnLength is 0 ? returnLength = (uint)(bufferPBI.ByteLength * 2) : returnLength);
                 }
 
                 if (status.Code is not Code.STATUS_SUCCESS)
