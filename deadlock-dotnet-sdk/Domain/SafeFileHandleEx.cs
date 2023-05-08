@@ -420,7 +420,7 @@ public class SafeFileHandleEx : SafeHandleEx
 
                 UNICODE_STRING str = new()
                 {
-                    Buffer = new PWSTR((char*)safeBuffer.DangerousGetHandle()),
+                    Buffer = new PWSTR((char*)(((FILE_NAME_INFO*)safeBuffer.DangerousGetHandle()) + sizeof(int))),
                     Length = (ushort)fni.FileNameLength,
                     MaximumLength = (ushort)bufferLength
                 };
