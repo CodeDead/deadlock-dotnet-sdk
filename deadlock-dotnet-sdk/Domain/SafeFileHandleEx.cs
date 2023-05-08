@@ -390,6 +390,11 @@ public class SafeFileHandleEx : SafeHandleEx
         }
     }
 
+    /// <summary>
+    /// Returns a path without the drive letter and separator e.g. "\\Repos\\BinToss\\deadlock-dotnet-diagnostics\\deadlock-diagnostics"<br/>
+    /// -OR-<br/>
+    /// The exception detailing what prevented the operation from starting or what caused it to fail.
+    /// </summary>
     public unsafe (string? v, Exception? ex) FileNameInfo
     {
         get
