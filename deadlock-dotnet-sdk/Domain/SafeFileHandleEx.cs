@@ -422,7 +422,7 @@ public class SafeFileHandleEx : SafeHandleEx
                 {
                     Buffer = new PWSTR((char*)(((FILE_NAME_INFO*)safeBuffer.DangerousGetHandle()) + sizeof(int))),
                     Length = (ushort)fni.FileNameLength,
-                    MaximumLength = (ushort)bufferLength
+                    MaximumLength = (ushort)(bufferLength - sizeof(int))
                 };
 
                 /* The string conversion copies the data to a new string in the managed heap before freeing safeBuffer and leaving this context. */
