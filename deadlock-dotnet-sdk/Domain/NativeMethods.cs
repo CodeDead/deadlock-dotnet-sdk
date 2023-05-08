@@ -256,7 +256,7 @@ internal static class NativeMethods
                 );
         }
 
-        if (status != Code.STATUS_SUCCESS)
+        if (status.Code is not Code.STATUS_SUCCESS)
         {
             // Fall back to using the previous code that we've used since Windows XP (dmex)
             systemInformationLength = 0x10000;
@@ -268,7 +268,7 @@ internal static class NativeMethods
                 SystemInformation: pSysInfoBuffer,
                 SystemInformationLength: systemInformationLength,
                 ReturnLength: ref returnLength
-                )) == Code.STATUS_INFO_LENGTH_MISMATCH)
+                )).Code is Code.STATUS_INFO_LENGTH_MISMATCH)
             {
                 Marshal.FreeHGlobal((IntPtr)pSysInfoBuffer);
                 systemInformationLength *= 2;

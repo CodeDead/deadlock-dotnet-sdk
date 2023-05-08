@@ -252,7 +252,9 @@ public partial class ProcessInfo
 #endif
                     // !WARNING may throw OutOfMemoryException; ReAllocHGlobal received a null pointer, but didn't check the error code
                     // the native call to LocalReAlloc (via Marshal.ReAllocHGlobal) sometimes returns a null pointer. This is a Legacy function. Why does .NET not use malloc/realloc?
-                    bufferCmdLine.Reallocate(numBytes: returnLength);
+                    if (returnLength < bufferCmdLine.ByteLength)
+                        bufferCmdLine.Reallocate(numBytes: (nuint)(bufferCmdLine.ByteLength * 2));
+                    else bufferCmdLine.Reallocate(numBytes: returnLength);
                     // none of these helped debug that internal error...
                     //var pinerr = Marshal.GetLastPInvokeError();
                     //var syserr = Marshal.GetLastSystemError();
@@ -279,7 +281,11 @@ public partial class ProcessInfo
             if (Env.Is64BitOperatingSystem && !Env.Is64BitProcess && Is32BitEmulatedProcess.v is false) // yes
             {
                 while ((status = NtWow64QueryInformationProcess64(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, &returnLength)).Code is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
-                    bufferPBI.Reallocate(numBytes: returnLength);
+                {
+                    if (returnLength < bufferPBI.ByteLength)
+                        bufferPBI.Reallocate(numBytes: (nuint)(bufferPBI.ByteLength * 2));
+                    else bufferPBI.Reallocate(numBytes: returnLength);
+                }
 
                 if (status.Code is not Code.STATUS_SUCCESS)
                     throw new NTStatusException(status, "NtWow64QueryInformationProcess64 failed to query a process's basic information; " + status.Message);
@@ -289,7 +295,11 @@ public partial class ProcessInfo
             else
             {
                 while ((status = NtQueryInformationProcess(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, ref returnLength)).Code is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
-                    bufferPBI.Reallocate(returnLength + (uint)IntPtr.Size);
+                {
+                    if (returnLength < bufferPBI.ByteLength)
+                        bufferPBI.Reallocate((nuint)(bufferPBI.ByteLength * 2));
+                    else bufferPBI.Reallocate((returnLength is 0 ? returnLength = (uint)(Marshal.SizeOf<PROCESS_BASIC_INFORMATION64>() * 2) : returnLength) + (uint)IntPtr.Size);
+                }
 
                 if (status.Code is not Code.STATUS_SUCCESS)
                     throw new NTStatusException(status, "NtQueryInformationProcess failed to query a process's basic information; " + status.Message);

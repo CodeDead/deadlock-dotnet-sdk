@@ -67,13 +67,13 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
         uint returnLength;
         using var h = new SafeObjectHandle(HandleValue, false);
 
-        status = NtQueryObject(h, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, (void*)buffer.DangerousGetHandle(), (uint)buffer.ByteLength, &returnLength);
-
         // Something's off. Marshal.SizeOf() returns 0x68 (104) but returnLength is 0x78 (120) or sometimes 0x80 (128). Is Win32Metadata's type definition wrong?
-        while (status.Code is STATUS_BUFFER_OVERFLOW or STATUS_INFO_LENGTH_MISMATCH or STATUS_BUFFER_TOO_SMALL)
+        while ((status = NtQueryObject(h, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, (void*)buffer.DangerousGetHandle(), (uint)buffer.ByteLength, &returnLength))
+            .Code is STATUS_BUFFER_OVERFLOW or STATUS_INFO_LENGTH_MISMATCH or STATUS_BUFFER_TOO_SMALL)
         {
-            buffer.Reallocate(returnLength);
-            status = NtQueryObject(h, OBJECT_INFORMATION_CLASS.ObjectTypeInformation, (void*)buffer.DangerousGetHandle(), (uint)buffer.ByteLength, &returnLength);
+            if (returnLength < buffer.ByteLength)
+                buffer.Reallocate((nuint)(2 * buffer.ByteLength));
+            else buffer.Reallocate(returnLength);
         }
 
         return status.IsSuccessful

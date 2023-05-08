@@ -162,7 +162,9 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                                                &bufferLength)).Code
                     is Code.STATUS_BUFFER_OVERFLOW or Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL)
                 {
-                    buffer.Reallocate(bufferLength);
+                    if (bufferLength < buffer.ByteLength)
+                        buffer.Reallocate((uint)(buffer.ByteLength * 2));
+                    else buffer.Reallocate(bufferLength);
                 }
 
                 OBJECT_NAME_INFORMATION oni = buffer.Read<OBJECT_NAME_INFORMATION>(0);
