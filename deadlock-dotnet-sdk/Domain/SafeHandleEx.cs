@@ -168,7 +168,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
                 }
 
                 OBJECT_NAME_INFORMATION oni = buffer.Read<OBJECT_NAME_INFORMATION>(0);
-                if (oni.Name.Buffer.Value == null)
+                if (oni.Name.Buffer.Value is null)
                     return objectName = (null, new NullReferenceException(errFailedMsg + "Bad data was copied to the buffer. The string pointer is null."));
 
                 return status.IsSuccessful

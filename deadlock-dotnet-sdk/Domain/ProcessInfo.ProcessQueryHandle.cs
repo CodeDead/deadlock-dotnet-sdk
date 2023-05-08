@@ -32,12 +32,12 @@ public partial class ProcessInfo
         /// </exception>
         /// <remarks>
         /// - If processId == Process.GetCurrentProcess().Id, use Process.GetCurrentProcess().SafeHandle property instead.
-        /// - If Windows.Win32.PInvoke.IsDebugModeEnabled() == true, the requested access is granted regardless of the security descriptor. See GetSecurityInfo();
+        /// - If Windows.Win32.PInvoke.IsDebugModeEnabled() is true, the requested access is granted regardless of the security descriptor. See GetSecurityInfo();
         /// </remarks>
         public static ProcessQueryHandle OpenProcessHandle(int processId, PROCESS_ACCESS_RIGHTS accessRights)
         {
             var h = OpenProcess_SafeHandle(accessRights, false, (uint)processId);
-            return h is null ? throw new Win32Exception() : (new(h, accessRights));
+            return h is null ? throw new Win32Exception() : new(h, accessRights);
         }
 
         public static implicit operator SafeProcessHandle(ProcessQueryHandle v) => v.Handle;

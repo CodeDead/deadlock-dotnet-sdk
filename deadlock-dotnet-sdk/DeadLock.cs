@@ -242,7 +242,7 @@ namespace deadlock_dotnet_sdk
             List<FileLockerEx> fileLockers = new();
             warnings = new();
 
-            if (filePaths.Length == 1)
+            if (filePaths.Length is 1)
             {
                 fileLockers.Add(FindLockingHandles(filePaths[0], filter, out WarningException? warningException));
                 if (warningException != null) warnings.Add(warningException);
