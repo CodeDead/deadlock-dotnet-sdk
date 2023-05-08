@@ -116,7 +116,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"GetIsClosed failed; {ex.ToString}");
+            Console.Error.WriteLine($"GetIsClosed failed; {ex}");
             Trace.TraceError(ex.ToString());
         }
         return false;
