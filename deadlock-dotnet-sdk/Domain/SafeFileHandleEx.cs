@@ -474,26 +474,26 @@ public class SafeFileHandleEx : SafeHandleEx
             }
 
             return @$"{nameof(SafeFileHandleEx)} hash:{GetHashCode()}
-        {nameof(CreatorBackTraceIndex)}             : {CreatorBackTraceIndex}
-        {nameof(FileFullPath)}                      : {(initProps ? (FileFullPath.v ?? FileFullPath.ex?.ToString()) : (fileFullPath.v ?? fileFullPath.ex?.ToString()))}
-        {nameof(FileHandleType)}                    : {(initProps ? (FileHandleType.v?.ToString() ?? FileFullPath.ex?.ToString()) : (fileHandleType.v?.ToString() ?? fileHandleType.ex?.ToString()))}
-        {nameof(FileName)}                          : {(initProps ? (FileName.v ?? FileName.ex?.ToString()) : (fileName.v ?? fileName.ex?.ToString()))}
-        {nameof(GrantedAccess)}                     : {SysHandleEx.GrantedAccessString}
-        {nameof(HandleObjectType)}                  : {(initProps ? (HandleObjectType.v ?? HandleObjectType.ex?.ToString()) : (handleObjectType.v ?? handleObjectType.ex?.ToString()))}
-        {nameof(HandleValue)}                       : {HandleValue} (0x{HandleValue:X})
-        {nameof(IsClosed)}                          : {IsClosed}
-        {nameof(IsDirectory)}                       : {(initProps ? (IsDirectory.v?.ToString() ?? IsDirectory.ex?.ToString()) : (isDirectory.v?.ToString() ?? isDirectory.ex?.ToString()))}
-        {nameof(IsFileHandle)}                      : {(initProps ? (IsFileHandle.v?.ToString() ?? IsFileHandle.ex?.ToString()) : (isFileHandle.v?.ToString() ?? isFileHandle.ex?.ToString()))}
-        {nameof(IsInvalid)}                         : {IsInvalid}
-        {nameof(ObjectAddress)}                     : {ObjectAddress} (0x{ObjectAddress:X})
-        {nameof(ObjectName)}                        : {(initProps ? (ObjectName.v ?? ObjectName.ex?.ToString()) : (objectName.v ?? objectName.ex?.ToString()))}
-        {nameof(ProcessId)}                         : {ProcessId}
+        {nameof(CreatorBackTraceIndex)} : {CreatorBackTraceIndex}
+        {nameof(FileFullPath)}          : {(initProps ? (FileFullPath.v ?? FileFullPath.ex?.ToString()) : (fileFullPath.v ?? fileFullPath.ex?.ToString()))}
+        {nameof(FileHandleType)}        : {(initProps ? (FileHandleType.v?.ToString() ?? FileFullPath.ex?.ToString()) : (fileHandleType.v?.ToString() ?? fileHandleType.ex?.ToString()))}
+        {nameof(FileName)}              : {(initProps ? (FileName.v ?? FileName.ex?.ToString()) : (fileName.v ?? fileName.ex?.ToString()))}
+        {nameof(GrantedAccess)}         : {SysHandleEx.GrantedAccessString}
+        {nameof(HandleObjectType)}      : {(initProps ? (HandleObjectType.v ?? HandleObjectType.ex?.ToString()) : (handleObjectType.v ?? handleObjectType.ex?.ToString()))}
+        {nameof(HandleValue)}           : {HandleValue} (0x{HandleValue:X})
+        {nameof(IsClosed)}              : {IsClosed}
+        {nameof(IsDirectory)}           : {(initProps ? (IsDirectory.v?.ToString() ?? IsDirectory.ex?.ToString()) : (isDirectory.v?.ToString() ?? isDirectory.ex?.ToString()))}
+        {nameof(IsFileHandle)}          : {(initProps ? (IsFileHandle.v?.ToString() ?? IsFileHandle.ex?.ToString()) : (isFileHandle.v?.ToString() ?? isFileHandle.ex?.ToString()))}
+        {nameof(IsInvalid)}             : {IsInvalid}
+        {nameof(ObjectAddress)}         : {ObjectAddress} (0x{ObjectAddress:X})
+        {nameof(ObjectName)}            : {(initProps ? (ObjectName.v ?? ObjectName.ex?.ToString()) : (objectName.v ?? objectName.ex?.ToString()))}
+        {nameof(ProcessId)}             : {ProcessId}
         {nameof(ProcessInfo.ParentId)}              : {(initProcessInfo ? (ProcessInfo.ParentId.v?.ToString() ?? ProcessInfo.ParentId.ex?.ToString()) : (processInfo?.ParentId.v?.ToString() ?? processInfo?.ParentId.ex?.ToString() ?? string.Empty))}
         {nameof(ProcessInfo.ProcessCommandLine)}    : {(initProcessInfo ? (ProcessInfo.ProcessCommandLine.v ?? ProcessInfo.ProcessCommandLine.ex?.ToString()) : (processInfo?.ProcessCommandLine.v ?? processInfo?.ProcessCommandLine.ex?.ToString() ?? string.Empty))}
         {nameof(ProcessInfo.ProcessMainModulePath)} : {(initProcessInfo ? (ProcessInfo.ProcessMainModulePath.v ?? ProcessInfo.ProcessMainModulePath.ex?.ToString()) : (processInfo?.ProcessMainModulePath.v ?? processInfo?.ProcessMainModulePath.ex?.ToString() ?? string.Empty))}
         {nameof(ProcessInfo.ProcessName)}           : {(initProcessInfo ? (ProcessInfo.ProcessName.v ?? ProcessInfo.ProcessName.ex?.ToString()) : (processInfo?.ProcessName.v ?? processInfo?.ProcessName.ex?.ToString() ?? string.Empty))}
         {nameof(ProcessInfo.ProcessProtection)}     : {(initProcessInfo ? (ProcessInfo.ProcessProtection.v?.ToString() ?? ProcessInfo.ProcessProtection.ex?.ToString()) : (processInfo?.ProcessProtection.v?.ToString() ?? processInfo?.ProcessProtection.ex?.ToString() ?? string.Empty))}
-        {nameof(ExceptionLog)}                      : ...
+        {nameof(ExceptionLog)}          : ...
         " + string.Concat(exLog);
         }
         catch (Exception ex)
