@@ -84,25 +84,27 @@ public readonly struct SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX
     /// <summary>
     /// Get the current HANDLE_FLAGS of this handle if it is still open.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The handle's attributes as HANDLE_FLAGS</returns>
+    /// <exception cref="UnauthorizedAccessException">Failed to open process (ID <see cref="ProcessId"/>) with access right '<see cref="PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE"/>'.</exception>
+    /// <exception cref="ArgumentException">Cannot open handle for process (ID <paramref name="ProcessId"/>).</exception>
+    /// <exception cref="Exception">Unrecognized error occurred when attempting to open handle for process with ID <see cref="ProcessId"/>.</exception>
     /// <exception cref="Win32Exception">Failed to get handle information -OR- failed to open process to duplicate handle.</exception>
     public unsafe HANDLE_FLAGS GetHandleInfo()
     {
-        try
+        if (ProcessId == Environment.ProcessId)
         {
             using SafeObjectHandle hObject = new(HandleValue, false);
             return GetHandleInformation(hObject);
         }
-        catch (Exception ex)
-        {
-            Debug.Print(ex.ToString());
-        }
 
-        // If passing the source handle failed, try passing a duplicate instead
+        using SafeProcessHandle sourceProcessHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, (uint)UniqueProcessId);
+        return GetHandleInfo(sourceProcessHandle);
+    }
 
-        using SafeProcessHandle sourceProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, (uint)UniqueProcessId) ?? throw new Win32Exception();
-        using SafeObjectHandle safeHandleValue = new(HandleValue, false);
-        DuplicateHandle(sourceProcess, safeHandleValue, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, default, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
+    public unsafe HANDLE_FLAGS GetHandleInfo(SafeProcessHandle sourceProcessHandle)
+    {
+        using SafeObjectHandle sourceHandle = new(HandleValue, false);
+        DuplicateHandle(sourceProcessHandle, sourceHandle, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, default, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
         return GetHandleInformation(dupHandle);
     }
 }
