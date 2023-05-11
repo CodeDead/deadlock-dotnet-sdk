@@ -25,8 +25,9 @@ namespace deadlock_dotnet_sdk.Domain;
 public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 {
     protected const string errHandleClosedMsgSuffix = "The handle is closed.";
+    protected (SafeFileHandle? v, Exception? ex) duplicateHandle;
     protected (string? v, Exception? ex) handleObjectType;
-    private bool isClosed;
+    private (bool? v, Exception? ex) isClosed;
     protected (string? v, Exception? ex) objectName;
     protected ProcessInfo? processInfo;
 
@@ -61,7 +62,9 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             {
                 const string errUnableMsg = "Unable to query " + nameof(HandleObjectType) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(HandleObjectType) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is null)
+                    return objectName = (null, new InvalidOperationException(errUnableMsg + "Failed to determine if the handle is still open."));
+                if (IsClosed.v is true)
                     return handleObjectType = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 var (v, ex) = ProcessInfo.ProcessProtection;
                 if (v is null)
@@ -94,37 +97,76 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// (non-persistent) Pass the handle to GetHandleInformation and check for ERROR_INVALID_HANDLE to determine if the handle is open or closed.
     /// </summary>
-    public new bool IsClosed
+    public new (bool? v, Exception? ex) IsClosed => isClosed.v is true ? isClosed : (isClosed = GetIsClosed());
+
+    private (bool?, Exception?) GetIsClosed()
     {
-        get
+        const string errFailedMsg = "Failed to query " + nameof(IsClosed) + "; ";
+        const string errFailedDupMsg = errFailedMsg + "Failed to duplicate handle.";
+        string errFailedOpenProcMsg = $"{errFailedMsg}Failed to open handle to process {ProcessId}.";
+        SafeProcessHandle? hSourceProcessHandle = null;
+        SafeProcessHandle hTargetProcessHandle = Process.GetCurrentProcess().SafeHandle;
+        SafeFileHandle? duplicate = null;
+
+        if (ProcessId != Environment.ProcessId)
         {
-            return isClosed ? isClosed : (isClosed = GetIsClosed());
+            /** Open Process Handle */
+            try
+            {
+                hSourceProcessHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
+            }
+            catch (Exception ex)
+            {
+                return (null, new Exception(errFailedOpenProcMsg, ex));
+            }
+
+            /** Duplicate handle to this process */
+            try
+            {
+                duplicate = DuplicateHandle(hSourceProcessHandle, this, hTargetProcessHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
+            }
+            catch (ArgumentException) when (!(hSourceProcessHandle.IsInvalid || hTargetProcessHandle.IsInvalid)) // if both are valid...
+            {
+                return (true, null); // ...then the current handle is invalid
+            }
+            catch (Exception ex)
+            {
+                return (null, new Exception(errFailedDupMsg, ex));
+            }
+            finally
+            {
+                hSourceProcessHandle?.Dispose();
+            }
+
+            /** GetHandleInformation */
+
         }
+        else
+        {
+            try
+            {
+                HANDLE_FLAGS flags = GetHandleInformation(this);
+            }
+            catch (Exception ex) when (
+                   (ex is Win32Exception inWin32Exception && inWin32Exception.NativeErrorCode is (int)Win32ErrorCode.ERROR_INVALID_HANDLE)
+                || (ex is PInvoke.Win32Exception piWin32Exception && piWin32Exception.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_HANDLE))
+            {
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                return (null, new Exception(errFailedMsg + "GetHandleInformation encountered an error.", ex));
+            }
+            finally
+            {
+                hSourceProcessHandle?.Dispose();
+                duplicate?.Dispose();
+            }
+        }
+        return (false, null);
     }
 
-    private bool GetIsClosed()
-    {
-        try
-        {
-            SafeProcessHandle sourceProcessHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
-            SafeFileHandle duplicate = DuplicateHandle(sourceProcessHandle, this, Process.GetCurrentProcess().SafeHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_CLOSE_SOURCE | DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS)
-            HANDLE_FLAGS flags = GetHandleInformation(this);
-        }
-        catch (Exception ex) when (
-               (ex is Win32Exception inWin32Exception && inWin32Exception.NativeErrorCode is (int)Win32ErrorCode.ERROR_INVALID_HANDLE)
-            || (ex is PInvoke.Win32Exception piWin32Exception && piWin32Exception.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_HANDLE))
-        {
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"GetIsClosed failed; {ex}");
-            Trace.TraceError(ex.ToString());
-        }
-        return false;
-    }
-
-    public new bool IsInvalid => IsClosed || base.IsInvalid || base.IsClosed;
+    public new bool IsInvalid => IsClosed.v is true || base.IsInvalid || base.IsClosed;
 
     /// <summary>
     /// The name of the object e.g. "\\Device\\HarddiskVolume4\\Repos\\BinToss\\deadlock-dotnet-diagnostics\\deadlock-diagnostics" or "\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Control\\Nls\\Sorting\\Versions"
@@ -143,7 +185,9 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             {
                 const string errUnableMsg = "Unable to query " + nameof(ObjectName) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(ObjectName) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is null)
+                    return objectName = (null, new InvalidOperationException(errUnableMsg + "Failed to determine if the handle is still open."));
+                if (IsClosed.v is true)
                     return objectName = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 var (v, ex) = ProcessInfo.ProcessProtection;
                 // I'm assuming process protection prohibits access. I've not tested it.
@@ -185,6 +229,38 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     }
 
     public ProcessInfo ProcessInfo => processInfo ??= NativeMethods.Processes.GetProcessById((int)(uint)SysHandleEx.UniqueProcessId);
+
+    /// <summary>
+    /// A duplicated handle for handle info queries.
+    /// </summary>
+    /// <remarks>CloseSourceHandle makes a separate duplicate with different permissions.</remarks>
+    public (SafeFileHandle? v, Exception? ex) DuplicateHandle
+    {
+        get
+        {
+            if (duplicateHandle is (null, null))
+            {
+                const string errFailedMsg = "Failed to duplicate handle; ";
+                const string errUnableMsg = "Unable to duplicate handle; ";
+                if (ProcessInfo.ProcessHandle.v is null)
+                    return duplicateHandle = (null, new InvalidOperationException(errUnableMsg + "Failed to open source process handle.", ProcessInfo.ProcessHandle.ex));
+
+                try
+                {
+                    SafeFileHandle v = DuplicateHandle(ProcessInfo.ProcessHandle.v, this, Process.GetCurrentProcess().SafeHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
+                    return duplicateHandle = (v, null);
+                }
+                catch (Exception ex)
+                {
+                    return duplicateHandle = (null, new Exception(errFailedMsg + "The DuplicateHandle function encountered an error.", ex));
+                }
+            }
+            else
+            {
+                return duplicateHandle;
+            }
+        }
+    }
 
     /// <summary>A list of exceptions thrown by constructors and other methods of this class.</summary>
     /// <remarks>Use List's methods (e.g. Add) to modify this list.</remarks>
@@ -254,7 +330,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     protected override bool ReleaseHandle()
     {
         Close();
-        return IsClosed;
+        return IsClosed.v is true;
     }
 
     #endregion Methods
