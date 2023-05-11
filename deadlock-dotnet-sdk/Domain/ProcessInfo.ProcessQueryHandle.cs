@@ -1,7 +1,6 @@
 using Microsoft.Win32.SafeHandles;
 using Windows.Win32.System.Threading;
 using static Windows.Win32.PInvoke;
-using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace deadlock_dotnet_sdk.Domain;
 
@@ -24,21 +23,15 @@ public partial class ProcessInfo
         /// <param name="processId"></param>
         /// <param name="accessRights"></param>
         /// <returns>A ProcessQueryHandle wrapping a SafeProcessHandle and the requested access rights.</returns>
-        /// <exception cref="Win32Exception">Failed to open handle. The process might not exist, access was denied, or an unknown error occurred.<br/>
-        ///     <example>
-        ///     If processId is 0, error code is ERROR_INVALID_PARAMETER<br/>
-        ///     If process is System (4), CRSS, or similarly protected processes, error code is ERROR_ACCESS_DENIED<br/>
-        ///     </example>
-        /// </exception>
+        /// <exception cref="UnauthorizedAccessException">Failed to open process (ID <paramref name="processId"/>) with access rights '<paramref name="accessRights"/>'.</exception>
+        /// <exception cref="ArgumentException">Cannot open handle for process (ID <paramref name="processId"/>).</exception>
+        /// <exception cref="Exception">Unrecognized error occurred when attempting to open handle for process with ID <paramref name="processId"/>.</exception>
         /// <remarks>
         /// - If processId == Process.GetCurrentProcess().Id, use Process.GetCurrentProcess().SafeHandle property instead.
         /// - If Windows.Win32.PInvoke.IsDebugModeEnabled() is true, the requested access is granted regardless of the security descriptor. See GetSecurityInfo();
         /// </remarks>
         public static ProcessQueryHandle OpenProcessHandle(int processId, PROCESS_ACCESS_RIGHTS accessRights)
-        {
-            var h = OpenProcess_SafeHandle(accessRights, false, (uint)processId);
-            return h is null ? throw new Win32Exception() : new(h, accessRights);
-        }
+            => new(OpenProcess_SafeHandle(accessRights, false, (uint)processId), accessRights);
 
         public static implicit operator SafeProcessHandle(ProcessQueryHandle v) => v.Handle;
     }

@@ -106,6 +106,8 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     {
         try
         {
+            SafeProcessHandle sourceProcessHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
+            SafeFileHandle duplicate = DuplicateHandle(sourceProcessHandle, this, Process.GetCurrentProcess().SafeHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_CLOSE_SOURCE | DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS)
             HANDLE_FLAGS flags = GetHandleInformation(this);
         }
         catch (Exception ex) when (

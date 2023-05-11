@@ -394,17 +394,24 @@ public partial class ProcessInfo
         {
             if (processProtection is (null, null))
             {
-                const uint ProcessProtectionInformation = 61; // Retrieves a BYTE value indicating the type of protected process and the protected process signer.
-                PS_PROTECTION protection = default;
-                uint retLength = 0;
+                try
+                {
+                    //TODO: use ProcessInfo.ProcessHandle
+                    const uint ProcessProtectionInformation = 61; // Retrieves a BYTE value indicating the type of protected process and the protected process signer.
+                    PS_PROTECTION protection = default;
+                    uint retLength = 0;
+                    using SafeProcessHandle hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)ProcessId);
+                    NTSTATUS status = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)ProcessProtectionInformation, &protection, 1, ref retLength);
 
-                using SafeProcessHandle? hProcess = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)ProcessId);
-                NTSTATUS status = NtQueryInformationProcess(hProcess, (PROCESSINFOCLASS)ProcessProtectionInformation, &protection, 1, ref retLength);
-
-                if (status.Code is not Code.STATUS_SUCCESS)
-                    return processProtection = (null, new NTStatusException(status));
-                else
-                    return processProtection = (protection, null);
+                    if (status.Code is not Code.STATUS_SUCCESS)
+                        return processProtection = (null, new NTStatusException(status));
+                    else
+                        return processProtection = (protection, null);
+                }
+                catch (Exception ex)
+                {
+                    return processProtection = (null, ex);
+                }
             }
             else
             {

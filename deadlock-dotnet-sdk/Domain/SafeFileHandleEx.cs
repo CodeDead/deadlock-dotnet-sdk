@@ -206,6 +206,7 @@ public class SafeFileHandleEx : SafeHandleEx
                     const uint LengthIndicatesError = 0;
 
                     // Try without duplicating. If it fails, try duplicating the handle.
+                    // TODO: only try is ProcessId == this process
                     try
                     {
                         GETFINALPATHNAMEBYHANDLE_FLAGS flags = IsFilePathRemote.v is true ? GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_OPENED : GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED;
@@ -249,12 +250,23 @@ public class SafeFileHandleEx : SafeHandleEx
                     }
 
                     /// Return the normalized drive name. This is the default.
-                    using SafeProcessHandle processHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
-                    if (processHandle is null || processHandle?.IsInvalid == true)
-                        throw new Win32Exception();
-
-                    if (!DuplicateHandle(processHandle, this, Process.GetCurrentProcess().SafeHandle, out SafeFileHandle dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
-                        throw new Win32Exception();
+                    SafeFileHandle dupHandle;
+                    try
+                    {
+                        // throws UnauthorizedAccessException, ArgumentException, or Exception
+                        using SafeProcessHandle processHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
+                        // todo: use handle-returning overload
+                        if (!DuplicateHandle(processHandle, this, Process.GetCurrentProcess().SafeHandle, out dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
+                            throw new Win32Exception();
+                    }
+                    catch (Win32Exception ex)
+                    {
+                        return fileFullPath = (null, new Exception(errFailedMsg + "Failed to duplicate handle to this process.", ex));
+                    }
+                    catch (Exception ex)
+                    {
+                        return fileFullPath = (null, new Exception(errFailedMsg + "Failed to open a process handle.", ex));
+                    }
 
                     length = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
 
