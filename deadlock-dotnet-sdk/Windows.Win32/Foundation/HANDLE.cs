@@ -11,6 +11,8 @@ partial struct HANDLE : IComparable<HANDLE>
     public static implicit operator HANDLE(nint v) => new(v);
     public static implicit operator nint(HANDLE v) => v.Value;
 
+    public static unsafe explicit operator HANDLE(void* v) => new((IntPtr)v);
+    public static unsafe implicit operator void*(HANDLE v) => (void*)v.Value;
     /// <summary>
     /// Close the handle via the CloseHandle function
     /// </summary>
