@@ -140,13 +140,24 @@ public partial class ProcessInfo
         }
     }
 
+    /// <summary>
+    /// A persistent process handle with all (or some of) the rights we need for various operations. See ProcessHandle.v.AccessRights for granted access rights.<br/>
+    /// -OR-<br/>
+    /// An Exception detailing why the 'get' operation failed.
+    /// </summary>
+    /// <value>
+    ///     If successful, a SafeProcessHandle with its AccessRights property assigned the PROCESS_ACCESS_RIGHTS used to open it. Else...<br/>
+    ///     <exception cref="UnauthorizedAccessException">Unable to open the process with any of requested access rights.</exception><br/>
+    ///     <exception cref=""></exception><br/>
+    /// </value>
     public (SafeProcessHandleEx? v, Exception? ex) ProcessHandle
     {
         get
         {
             if (processHandle is (null, null))
             {
-                const string errUnableMsg = "Unable to open handle; ";
+                const string errUnableMsg = "Unable to open process handle; ";
+                const string errFailedMsg = "Failed to open process handle; ";
                 // We can't lookup the ProcessProtection without opening a process handle to check the process protection.
                 //PROCESS_ACCESS_RIGHTS access = ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected ? PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION : PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ;
 
@@ -159,51 +170,28 @@ public partial class ProcessInfo
                         SafeProcessHandleEx.OpenProcessHandle(processId, accessRight);
                         AccessRightsGranted.Add(accessRight);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) // we don't  want exceptions to break the loop. They just mean we can't use an access right.
                     {
                         Console.Error.WriteLine($"Failed to open a temporary process handle to check permissible access rights. {ex}");
                     }
                 });
 
+                if (AccessRightsGranted.Count is 0)
+                    return processHandle = (null, new UnauthorizedAccessException(errUnableMsg + "None of the following rights were granted: " + AccessRightsRequested.Aggregate((a, b) => a | b)));
+
                 try
                 {
-                    SafeProcessHandleEx h = SafeProcessHandleEx.OpenProcessHandle(ProcessId, AccessRightsGranted.Aggregate((a, b) => a |= b));
-                    canGetQueryLimitedInfoHandle = true;
-                    canGetReadMemoryHandle = true;
-                    canDuplicateHandles = true;
+                    PROCESS_ACCESS_RIGHTS authorizedAccess = AccessRightsGranted.Aggregate((a, b) => a | b);
+                    SafeProcessHandleEx h = SafeProcessHandleEx.OpenProcessHandle(ProcessId, authorizedAccess);
+                    canGetQueryLimitedInfoHandle = (authorizedAccess & PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) is not 0;
+                    canGetReadMemoryHandle = (authorizedAccess & PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ) is not 0;
+                    canDuplicateHandles = (authorizedAccess & PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE) is not 0;
                     return processHandle = (h, null);
-                }
-                catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
-                {
-                    // Before assuming anything, try without PROCESS_VM_READ. Without it, we don't need Debug privilege, but the PEB and all of its recursive members (e.g. Command Line) will be unavailable.
-                    const string exAccessMsg = errUnableMsg + " The requested permissions were denied.";
-                    const string exPermsFirst = "\r\nFirst attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION) + ", " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ);
-
-                    try
-                    {
-                        SafeProcessHandleEx h = SafeProcessHandleEx.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
-                        canGetQueryLimitedInfoHandle = true;
-                        return processHandle = (h, null);
-                    }
-                    catch (Win32Exception ex2) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
-                    {
-                        // Debug Mode could not be enabled? Was SE_DEBUG_NAME denied to user or is current process not elevated?
-                        const string exPermsSecond = "\r\nSecond attempt's requested permissions: " + nameof(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
-                        return processHandle = (null, new UnauthorizedAccessException(exAccessMsg + exPermsFirst + exPermsSecond, ex2));
-                    }
-                    catch (Exception ex2)
-                    {
-                        return processHandle = (null, new AggregateException(errUnableMsg + " Permissions were denied and an unknown error occurred.", new Exception[] { ex, ex2 }));
-                    }
-                }
-                catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_INVALID_PARAMETER)
-                {
-                    return processHandle = (null, new ArgumentException(errUnableMsg + " A process with ID " + ProcessId + " could not be found. The process may have exited.", ex));
                 }
                 catch (Exception ex)
                 {
-                    // unknown error
-                    return processHandle = (null, new Exception(errUnableMsg + " An unknown error occurred.", ex));
+                    /* Normally, we'd wrap the exceptions in another to add a contextual message, but the caught exceptions' messages suffice. */
+                    return processHandle = (null, ex);
                 }
             }
             else
