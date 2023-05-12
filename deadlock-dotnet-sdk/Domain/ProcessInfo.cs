@@ -167,7 +167,7 @@ public partial class ProcessInfo
 
                 try
                 {
-                    SafeProcessHandleEx h = SafeProcessHandleEx.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ | PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE);
+                    SafeProcessHandleEx h = SafeProcessHandleEx.OpenProcessHandle(ProcessId, AccessRightsGranted.Aggregate((a, b) => a |= b));
                     canGetQueryLimitedInfoHandle = true;
                     canGetReadMemoryHandle = true;
                     canDuplicateHandles = true;
