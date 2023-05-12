@@ -6,9 +6,9 @@ namespace deadlock_dotnet_sdk.Domain;
 
 public partial class ProcessInfo
 {
-    public class ProcessQueryHandle
+    public class SafeProcessHandleEx
     {
-        public ProcessQueryHandle(SafeProcessHandle processHandle, PROCESS_ACCESS_RIGHTS accessRights)
+        public SafeProcessHandleEx(SafeProcessHandle processHandle, PROCESS_ACCESS_RIGHTS accessRights)
         {
             Handle = processHandle;
             AccessRights = accessRights;
@@ -30,9 +30,9 @@ public partial class ProcessInfo
         /// - If processId == Process.GetCurrentProcess().Id, use Process.GetCurrentProcess().SafeHandle property instead.
         /// - If Windows.Win32.PInvoke.IsDebugModeEnabled() is true, the requested access is granted regardless of the security descriptor. See GetSecurityInfo();
         /// </remarks>
-        public static ProcessQueryHandle OpenProcessHandle(int processId, PROCESS_ACCESS_RIGHTS accessRights)
+        public static SafeProcessHandleEx OpenProcessHandle(int processId, PROCESS_ACCESS_RIGHTS accessRights)
             => new(OpenProcess_SafeHandle(accessRights, false, (uint)processId), accessRights);
 
-        public static implicit operator SafeProcessHandle(ProcessQueryHandle v) => v.Handle;
+        public static implicit operator SafeProcessHandle(SafeProcessHandleEx v) => v.Handle;
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
@@ -19,12 +20,13 @@ public partial class ProcessInfo
 {
     private bool canGetQueryLimitedInfoHandle;
     private bool canGetReadMemoryHandle;
+    private bool canDuplicateHandles;
     private (bool? v, Exception? ex) is32BitEmulatedProcess;
     private (int? v, Exception?) parentId;
     private (ProcessAndHostOSArch? arch, Exception? ex) processAndHostOSArch;
     private (ProcessBasicInformation? v, Exception? ex) processBasicInformation;
     private (string? v, Exception? ex) processCommandLine;
-    private (ProcessQueryHandle? v, Exception? ex) processHandle;
+    private (SafeProcessHandleEx? v, Exception? ex) processHandle;
     private (string? v, Exception? ex) processMainModulePath;
     private (string? v, Exception? ex) processName;
     private (PS_PROTECTION? v, Exception? ex) processProtection;
@@ -138,7 +140,7 @@ public partial class ProcessInfo
         }
     }
 
-    public (ProcessQueryHandle? v, Exception? ex) ProcessHandle
+    public (SafeProcessHandleEx? v, Exception? ex) ProcessHandle
     {
         get
         {
@@ -148,11 +150,27 @@ public partial class ProcessInfo
                 // We can't lookup the ProcessProtection without opening a process handle to check the process protection.
                 //PROCESS_ACCESS_RIGHTS access = ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected ? PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION : PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ;
 
+                PROCESS_ACCESS_RIGHTS[] AccessRightsRequested = { PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE };
+                ConcurrentBag<PROCESS_ACCESS_RIGHTS> AccessRightsGranted = new();
+                var parallelLoopResult = Parallel.ForEach(AccessRightsRequested, accessRight =>
+                {
+                    try
+                    {
+                        SafeProcessHandleEx.OpenProcessHandle(processId, accessRight);
+                        AccessRightsGranted.Add(accessRight);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"Failed to open a temporary process handle to check permissible access rights. {ex}");
+                    }
+                });
+
                 try
                 {
-                    ProcessQueryHandle h = ProcessQueryHandle.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ);
+                    SafeProcessHandleEx h = SafeProcessHandleEx.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ | PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE);
                     canGetQueryLimitedInfoHandle = true;
                     canGetReadMemoryHandle = true;
+                    canDuplicateHandles = true;
                     return processHandle = (h, null);
                 }
                 catch (Win32Exception ex) when (ex.NativeErrorCode is Win32ErrorCode.ERROR_ACCESS_DENIED)
@@ -163,7 +181,7 @@ public partial class ProcessInfo
 
                     try
                     {
-                        ProcessQueryHandle h = ProcessQueryHandle.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
+                        SafeProcessHandleEx h = SafeProcessHandleEx.OpenProcessHandle(ProcessId, PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION);
                         canGetQueryLimitedInfoHandle = true;
                         return processHandle = (h, null);
                     }
