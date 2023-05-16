@@ -148,7 +148,9 @@ public partial class ProcessInfo
     /// <value>
     ///     If successful, a SafeProcessHandle with its AccessRights property assigned the PROCESS_ACCESS_RIGHTS used to open it. Else...<br/>
     ///     <exception cref="UnauthorizedAccessException">Unable to open the process with any of requested access rights.</exception><br/>
-    ///     <exception cref=""></exception><br/>//TODO: exception docs
+    ///     <exception cref="UnauthorizedAccessException">Failed to open process (ID <paramref name="processId"/>) with access rights '<paramref name="accessRights"/>'.</exception><br/>
+    ///     <exception cref="ArgumentException">Cannot open handle for process (ID <paramref name="processId"/>).</exception><br/>
+    ///     <exception cref="Exception">Unrecognized error occurred when attempting to open handle for process with ID <paramref name="processId"/>.</exception><br/>
     /// </value>
     public (SafeProcessHandleEx? v, Exception? ex) ProcessHandle
     {
