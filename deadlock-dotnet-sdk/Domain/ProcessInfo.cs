@@ -171,7 +171,7 @@ public partial class ProcessInfo
                 {
                     try
                     {
-                        SafeProcessHandleEx.OpenProcessHandle(processId, accessRight);
+                        SafeProcessHandleEx.OpenProcessHandle(ProcessId, accessRight);
                         AccessRightsGranted.Add(accessRight);
                     }
                     catch (Exception ex) // we don't  want exceptions to break the loop. They just mean we can't use an access right.
