@@ -148,7 +148,7 @@ public partial class ProcessInfo
     /// <value>
     ///     If successful, a SafeProcessHandle with its AccessRights property assigned the PROCESS_ACCESS_RIGHTS used to open it. Else...<br/>
     ///     <exception cref="UnauthorizedAccessException">Unable to open the process with any of requested access rights.</exception><br/>
-    ///     <exception cref=""></exception><br/>
+    ///     <exception cref=""></exception><br/>//TODO: exception docs
     /// </value>
     public (SafeProcessHandleEx? v, Exception? ex) ProcessHandle
     {
@@ -158,6 +158,8 @@ public partial class ProcessInfo
             {
                 const string errUnableMsg = "Unable to open process handle; ";
                 const string errFailedMsg = "Failed to open process handle; ";
+                if (ProcessId == Environment.ProcessId)
+                    return processHandle = (new(Process.GetCurrentProcess().SafeHandle, PROCESS_ACCESS_RIGHTS.PROCESS_ALL_ACCESS), null);
                 // We can't lookup the ProcessProtection without opening a process handle to check the process protection.
                 //PROCESS_ACCESS_RIGHTS access = ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected ? PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION : PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ;
 

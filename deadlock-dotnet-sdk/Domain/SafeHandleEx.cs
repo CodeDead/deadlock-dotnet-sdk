@@ -97,12 +97,14 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// (non-persistent) Pass the handle to GetHandleInformation and check for ERROR_INVALID_HANDLE to determine if the handle is open or closed.
     /// </summary>
-    public new (bool? v, Exception? ex) IsClosed => isClosed.v is true ? isClosed : (isClosed = GetIsClosed());
+    public new (bool? v, Exception? ex) IsClosed => isClosed.v is true ? isClosed : (isClosed.v is null ? isClosed = GetIsClosed() : isClosed);
+    // TODO: use block property, inline method
 
     private (bool?, Exception?) GetIsClosed()
     {
         const string errFailedMsg = "Failed to query " + nameof(IsClosed) + "; ";
         const string errFailedDupMsg = errFailedMsg + "Failed to duplicate handle.";
+        const string errProcessHandleMsg = "A process handle with PROCESS_DUP_HANDLE is required for this operation.";
         string errFailedOpenProcMsg = $"{errFailedMsg}Failed to open handle to process {ProcessId}.";
         SafeProcessHandle? hSourceProcessHandle = null;
         SafeProcessHandle hTargetProcessHandle = Process.GetCurrentProcess().SafeHandle;
@@ -111,21 +113,18 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
         if (ProcessId != Environment.ProcessId)
         {
             /** Open Process Handle */
-            try
-            {
-                hSourceProcessHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
-            }
-            catch (Exception ex)
-            {
-                return (null, new Exception(errFailedOpenProcMsg, ex));
-            }
+            if (ProcessInfo.ProcessHandle.v is null)
+                return (null, new InvalidOperationException(errFailedOpenProcMsg, ProcessInfo.ProcessHandle.ex));
+
+            if ((ProcessInfo.ProcessHandle.v.AccessRights & PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE) is 0)
+                return (null, new UnauthorizedAccessException(errProcessHandleMsg));
 
             /** Duplicate handle to this process */
             try
             {
-                duplicate = DuplicateHandle(hSourceProcessHandle, this, hTargetProcessHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
+                duplicate = DuplicateHandle(ProcessInfo.ProcessHandle.v, this, hTargetProcessHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
             }
-            catch (ArgumentException) when (!(hSourceProcessHandle.IsInvalid || hTargetProcessHandle.IsInvalid)) // if both are valid...
+            catch (ArgumentException) when (!(ProcessInfo.ProcessHandle.v.Handle.IsInvalid || hTargetProcessHandle.IsInvalid)) // if both are valid...
             {
                 return (true, null); // ...then the current handle is invalid
             }
@@ -137,9 +136,6 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             {
                 hSourceProcessHandle?.Dispose();
             }
-
-            /** GetHandleInformation */
-
         }
         else
         {
@@ -185,23 +181,27 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
             {
                 const string errUnableMsg = "Unable to query " + nameof(ObjectName) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(ObjectName) + "; ";
+
                 if (IsClosed.v is null)
                     return objectName = (null, new InvalidOperationException(errUnableMsg + "Failed to determine if the handle is still open."));
                 if (IsClosed.v is true)
                     return objectName = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
-                var (v, ex) = ProcessInfo.ProcessProtection;
+
                 // I'm assuming process protection prohibits access. I've not tested it.
                 // This information is not queryable in SystemInformer when a process has Full protection.
-                if (v is null)
-                    return objectName = (null, new UnauthorizedAccessException(errUnableMsg + "Failed to query process's protection level.", ex));
-                else if (v.Value.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
+                if (ProcessInfo.ProcessProtection.v is null)
+                    return objectName = (null, new UnauthorizedAccessException(errUnableMsg + "Failed to query process's protection level.", ProcessInfo.ProcessProtection.ex));
+                else if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
                     return objectName = (null, new UnauthorizedAccessException(errUnableMsg + "The process's protection type prohibits access."));
+
+                if (DuplicateHandle.v is null)
+                    return objectName = (null, new NullReferenceException(errUnableMsg + "A duplicate handle is required for this operation.", DuplicateHandle.ex));
 
                 uint returnLength = 1024u;
                 using SafeBuffer<OBJECT_NAME_INFORMATION> buffer = new(numBytes: returnLength);
                 NTSTATUS status = default;
 
-                while ((status = NtQueryObject(this,
+                while ((status = NtQueryObject(this.DuplicateHandle.v,
                                                OBJECT_INFORMATION_CLASS.ObjectNameInformation,
                                                (OBJECT_NAME_INFORMATION*)buffer.DangerousGetHandle(),
                                                returnLength,
@@ -233,7 +233,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// A duplicated handle for handle info queries.
     /// </summary>
-    /// <remarks>CloseSourceHandle makes a separate duplicate with different permissions.</remarks>
+    /// <remarks>CloseSourceHandle makes a separate duplicate with different permissions. This handle will never have DUPLICATE_SOURCE_CLOSE.</remarks>
     public (SafeFileHandle? v, Exception? ex) DuplicateHandle
     {
         get
@@ -247,8 +247,7 @@ public class SafeHandleEx : SafeHandleZeroOrMinusOneIsInvalid
 
                 try
                 {
-                    SafeFileHandle v = DuplicateHandle(ProcessInfo.ProcessHandle.v, this, Process.GetCurrentProcess().SafeHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS);
-                    return duplicateHandle = (v, null);
+                    return duplicateHandle = (DuplicateHandle(ProcessInfo.ProcessHandle.v, this, Process.GetCurrentProcess().SafeHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS), null);
                 }
                 catch (Exception ex)
                 {

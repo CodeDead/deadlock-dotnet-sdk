@@ -40,7 +40,7 @@ public class SafeFileHandleEx : SafeHandleEx
     /// <param name="sysHandleEx"></param>
     internal SafeFileHandleEx(SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX sysHandleEx) : base(sysHandleEx: sysHandleEx)
     {
-        if (IsClosed)
+        if (IsClosed.v is true)
         {
             ExceptionLog.Add(new NullReferenceException("This handle was closed before it was passed to this SafeFileHandleEx constructor."));
             return;
@@ -79,13 +79,15 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(IsDirectory) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(IsDirectory) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is true)
                     return isDirectory = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
+                if (DuplicateHandle.v is null)
+                    return isDirectory = (null, new InvalidOperationException(errUnableMsg + "A duplicate handle is required for this operation.", DuplicateHandle.ex));
                 FILE_ATTRIBUTE_TAG_INFO attr = default;
                 bool success;
                 unsafe
                 {
-                    success = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileAttributeTagInfo, &attr, (uint)Marshal.SizeOf(attr));
+                    success = GetFileInformationByHandleEx(DuplicateHandle.v, FILE_INFO_BY_HANDLE_CLASS.FileAttributeTagInfo, &attr, (uint)Marshal.SizeOf(attr));
                 }
 
                 if (success)
@@ -108,7 +110,7 @@ public class SafeFileHandleEx : SafeHandleEx
             if (isFileHandle is (null, null))
             {
                 const string errUnableMsg = "Unable to query " + nameof(IsFileHandle) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is true)
                     return isFileHandle = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 return HandleObjectType.v is "File"
                     ? (isFileHandle = (true, null))
@@ -151,14 +153,17 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(IsFilePathRemote) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(IsFilePathRemote) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is null)
                     return isFilePathRemote = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
+
+                if (DuplicateHandle.v is null)
+                    return isFilePathRemote = (null, new InvalidOperationException(errUnableMsg + "A duplicate handle is required for this operation.", DuplicateHandle.ex));
 
                 Win32ErrorCode err;
                 FILE_REMOTE_PROTOCOL_INFO info;
                 unsafe
                 {
-                    return GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileRemoteProtocolInfo, &info, (uint)Marshal.SizeOf(info))
+                    return GetFileInformationByHandleEx(DuplicateHandle.v, FILE_INFO_BY_HANDLE_CLASS.FileRemoteProtocolInfo, &info, (uint)Marshal.SizeOf(info))
                         ? (isFilePathRemote = (true, null))
                         : (err = (Win32ErrorCode)Marshal.GetLastPInvokeError()) is Win32ErrorCode.ERROR_INVALID_PARAMETER
                             ? (isFilePathRemote = (false, null))
@@ -185,119 +190,59 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileFullPath) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(FileFullPath) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is null)
                     return fileFullPath = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
+                if (DuplicateHandle.v is null)
+                    return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "A duplicate handle is required for this operation.", DuplicateHandle.ex));
+                if (ProcessInfo.ProcessProtection.v is null)
+                    return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query the process's protection.", ProcessInfo.ProcessProtection.ex));
+                if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
+                    return fileFullPath = (null, new UnauthorizedAccessException(errUnableMsg + "The process is protected."));
+                if (HandleObjectType.v is null)
+                    return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query handle object type.", HandleObjectType.ex));
+                if (IsFileHandle.v is false)
+                    return fileFullPath = (null, new ArgumentException(errUnableMsg + "The handle's object is not a File.", nameof(IsFileHandle)));
+                if (FileHandleType.v is not FileType.Disk)
+                    return fileFullPath = (null, new ArgumentException(errUnableMsg + "The File object is not a Disk-type File.", nameof(FileHandleType)));
+
                 try
                 {
-                    if (ProcessInfo.ProcessProtection.v is null)
-                        return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query the process's protection.", ProcessInfo.ProcessProtection.ex));
-                    if (ProcessInfo.ProcessProtection.v?.Type is PS_PROTECTION.PS_PROTECTED_TYPE.PsProtectedTypeProtected)
-                        return fileFullPath = (null, new UnauthorizedAccessException(errUnableMsg + "The process is protected."));
-                    if (HandleObjectType.v is null)
-                        return fileFullPath = (null, new InvalidOperationException(errUnableMsg + "Failed to query handle object type.", HandleObjectType.ex));
-                    if (IsFileHandle.v is false)
-                        return fileFullPath = (null, new ArgumentException(errUnableMsg + "The handle's object is not a File.", nameof(IsFileHandle)));
-                    if (FileHandleType.v is not FileType.Disk)
-                        return fileFullPath = (null, new ArgumentException(errUnableMsg + "The File object is not a Disk-type File.", nameof(FileHandleType)));
-
-                    uint bufLength = (uint)short.MaxValue;
-                    using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufLength));
-                    uint length = 0;
                     const uint LengthIndicatesError = 0;
+                    uint bufLength = (uint)short.MaxValue;
+                    uint length = 0;
+                    using PWSTR buffer = new((char*)Marshal.AllocHGlobal((int)bufLength));
+                    GETFINALPATHNAMEBYHANDLE_FLAGS flags = IsFilePathRemote.v is true ? GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_OPENED : GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED;
+                    Win32ErrorCode errorCode = Win32ErrorCode.ERROR_SUCCESS;
+                    length = GetFinalPathNameByHandle(DuplicateHandle.v, buffer, bufLength, flags);
 
-                    // Try without duplicating. If it fails, try duplicating the handle.
-                    // TODO: only try is ProcessId == this process
-                    try
-                    {
-                        GETFINALPATHNAMEBYHANDLE_FLAGS flags = IsFilePathRemote.v is true ? GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_OPENED : GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED;
-                        Win32ErrorCode errorCode = Win32ErrorCode.ERROR_SUCCESS;
-                        length = GetFinalPathNameByHandle(handle, buffer, bufLength, flags);
-
-                        if (length is not LengthIndicatesError)
-                        {
-                            if (length <= bufLength)
-                            {
-                                return fileFullPath = (buffer.ToString(), null);
-                            }
-                            else if (length > bufLength)
-                            {
-                                using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
-                                if ((length = GetFinalPathNameByHandle(handle, newBuffer, length, flags)) is not LengthIndicatesError)
-                                    return fileFullPath = (newBuffer.ToString(), null);
-                            }
-                        }
-                        else
-                        {
-                            errorCode = (Win32ErrorCode)Marshal.GetLastPInvokeError();
-
-                            Trace.TraceError(errorCode.GetMessage());
-
-                            return fileFullPath = (null, errorCode switch
-                            {
-                                // Removable storage, deleted item, network shares, et cetera
-                                Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException(errFailedMsg + $"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(errorCode)),
-                                // unlikely, but possible if system has little free memory
-                                Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException(errFailedMsg + "Insufficient memory to complete the operation.", new Win32Exception(errorCode)),
-                                // possible only if FILE_NAME_NORMALIZED (0) is invalid
-                                Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException(errFailedMsg + "Invalid flags were specified for dwFlags.", new Win32Exception(errorCode)),
-                                _ => new Exception($"{errFailedMsg}An undocumented error ({errorCode}) was returned when querying a file handle for its path.", new Win32Exception(errorCode))
-                            });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        return fileFullPath = (null, ex);
-                    }
-
-                    /// Return the normalized drive name. This is the default.
-                    SafeFileHandle dupHandle;
-                    try
-                    {
-                        // throws UnauthorizedAccessException, ArgumentException, or Exception
-                        using SafeProcessHandle processHandle = OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_DUP_HANDLE, false, ProcessId);
-                        // todo: use handle-returning overload
-                        if (!DuplicateHandle(processHandle, this, Process.GetCurrentProcess().SafeHandle, out dupHandle, 0, false, DUPLICATE_HANDLE_OPTIONS.DUPLICATE_SAME_ACCESS))
-                            throw new Win32Exception();
-                    }
-                    catch (Win32Exception ex)
-                    {
-                        return fileFullPath = (null, new Exception(errFailedMsg + "Failed to duplicate handle to this process.", ex));
-                    }
-                    catch (Exception ex)
-                    {
-                        return fileFullPath = (null, new Exception(errFailedMsg + "Failed to open a process handle.", ex));
-                    }
-
-                    length = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
-
-                    if (length != 0)
+                    if (length is not LengthIndicatesError)
                     {
                         if (length <= bufLength)
-                            return fileFullPath = (buffer.ToString(), null);
-
                         {
-                            // buffer was too small. Reallocate buffer with size matched 'length' and try again
+                            return fileFullPath = (buffer.ToString(), null);
+                        }
+                        else if (length > bufLength)
+                        {
                             using PWSTR newBuffer = new((char*)Marshal.AllocHGlobal((int)length));
-                            bufLength = GetFinalPathNameByHandle(dupHandle, buffer, bufLength, GETFINALPATHNAMEBYHANDLE_FLAGS.FILE_NAME_NORMALIZED);
-                            return fileFullPath = (newBuffer.ToString(), null);
+                            if ((length = GetFinalPathNameByHandle(DuplicateHandle.v, newBuffer, length, flags)) is not LengthIndicatesError)
+                                return fileFullPath = (newBuffer.ToString(), null);
                         }
                     }
-                    else
-                    {
-                        Win32ErrorCode error = (Win32ErrorCode)Marshal.GetLastWin32Error();
-                        Trace.TraceError(error.GetMessage());
 
-                        return (null, error switch
-                        {
-                            // Removable storage, deleted item, network shares, et cetera
-                            Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException($"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(error)),
-                            // unlikely, but possible if system has little free memory
-                            Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException("Failed to query path from file handle. Insufficient memory to complete the operation.", new Win32Exception(error)),
-                            // possible only if FILE_NAME_NORMALIZED (0) is invalid
-                            Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException("Failed to query path from file handle. Invalid flags were specified for dwFlags.", new Win32Exception(error)),
-                            _ => new Exception($"An undocumented error ({error}) was returned when querying a file handle for its path.", new Win32Exception(error))
-                        });
-                    }
+                    errorCode = (Win32ErrorCode)Marshal.GetLastPInvokeError();
+
+                    Trace.TraceError(errorCode.GetMessage());
+
+                    return fileFullPath = (null, errorCode switch
+                    {
+                        // Removable storage, deleted item, network shares, et cetera
+                        Win32ErrorCode.ERROR_PATH_NOT_FOUND => new FileNotFoundException(errFailedMsg + $"The path '{buffer}' was not found when querying a file handle.", fileName: buffer.ToString(), new Win32Exception(errorCode)),
+                        // unlikely, but possible if system has little free memory
+                        Win32ErrorCode.ERROR_NOT_ENOUGH_MEMORY => new OutOfMemoryException(errFailedMsg + "Insufficient memory to complete the operation.", new Win32Exception(errorCode)),
+                        // possible only if FILE_NAME_NORMALIZED (0) is invalid
+                        Win32ErrorCode.ERROR_INVALID_PARAMETER => new ArgumentException(errFailedMsg + "Invalid flags were specified for dwFlags.", new Win32Exception(errorCode)),
+                        _ => new Exception($"{errFailedMsg}An undocumented error ({errorCode}) was returned when querying a file handle for its path.", new Win32Exception(errorCode))
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -324,7 +269,7 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileHandleType) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(FileHandleType) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is true)
                     return fileHandleType = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 if (ProcessInfo.ProcessProtection.ex is not null)
                     return fileHandleType = (null, new NullReferenceException(errUnableMsg + "Failed to query the process's protection level."));
@@ -332,8 +277,10 @@ public class SafeFileHandleEx : SafeHandleEx
                     return fileHandleType = (null, new UnauthorizedAccessException(errUnableMsg + "The process's protection prohibits this operation."));
                 if (IsFileHandle.v is not true)
                     return fileHandleType = (null, new InvalidOperationException(errUnableMsg + "This operation is only valid on File handles."));
+                if (DuplicateHandle.v is null)
+                    return fileHandleType = (null, new InvalidOperationException(errUnableMsg + "A duplicate handle is required for this operation.", DuplicateHandle.ex));
 
-                FileType type = (FileType)GetFileType(handle);
+                FileType type = (FileType)GetFileType(DuplicateHandle.v);
                 if (type is FileType.Unknown)
                 {
                     Win32ErrorCode err = (Win32ErrorCode)Marshal.GetLastPInvokeError();
@@ -358,7 +305,7 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileName) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(FileName) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is true)
                     return objectName = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 if (FileFullPath.v is not null)
                 {
@@ -415,7 +362,7 @@ public class SafeFileHandleEx : SafeHandleEx
             {
                 const string errUnableMsg = "Unable to query " + nameof(FileNameInfo) + "; ";
                 const string errFailedMsg = "Failed to query " + nameof(FileNameInfo) + "; ";
-                if (IsClosed)
+                if (IsClosed.v is true)
                     return objectName = (null, new NullReferenceException(errUnableMsg + errHandleClosedMsgSuffix));
                 if (ProcessInfo.ProcessProtection.ex is not null)
                     return fileNameInfo = (null, new NullReferenceException(errUnableMsg + "Failed to query the process's protection level.", ProcessInfo.ProcessProtection.ex));
@@ -426,13 +373,13 @@ public class SafeFileHandleEx : SafeHandleEx
 
                 /** Get fni.FileNameLength */
                 FILE_NAME_INFO fni = default;
-                _ = GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
+                _ = GetFileInformationByHandleEx(DuplicateHandle.v, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, &fni, (uint)Marshal.SizeOf(fni));
 
                 /** Get FileNameInfo */
                 int bufferLength = Marshal.SizeOf(fni.FileNameLength) + (int)fni.FileNameLength;
                 using SafeBuffer<FILE_NAME_INFO> safeBuffer = new(numBytes: (nuint)bufferLength);
 
-                if (!GetFileInformationByHandleEx(this, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, (FILE_NAME_INFO*)safeBuffer.DangerousGetHandle(), (uint)bufferLength))
+                if (!GetFileInformationByHandleEx(DuplicateHandle.v, FILE_INFO_BY_HANDLE_CLASS.FileNameInfo, (FILE_NAME_INFO*)safeBuffer.DangerousGetHandle(), (uint)bufferLength))
                     return fileNameInfo = (null, new Exception(errFailedMsg + "GetFileInformationByHandleEx encountered an error.", new Win32Exception()));
 
                 /* The string conversion copies the data to a new string in the managed heap before freeing safeBuffer and leaving this context. */
