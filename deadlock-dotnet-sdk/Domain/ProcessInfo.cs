@@ -307,7 +307,7 @@ public partial class ProcessInfo
                 while ((status = NtQueryInformationProcess(ProcessHandle.v, PROCESSINFOCLASS.ProcessBasicInformation, (void*)bufferPBI.DangerousGetHandle(), (uint)bufferPBI.ByteLength, ref returnLength)).Code
                     is Code.STATUS_INFO_LENGTH_MISMATCH or Code.STATUS_BUFFER_TOO_SMALL or Code.STATUS_BUFFER_OVERFLOW)
                 {
-                    bufferPBI.Reallocate(returnLength is 0 ? returnLength = (uint)(bufferPBI.ByteLength * 2) : returnLength);
+                    bufferPBI.Reallocate(returnLength += (uint)bufferPBI.ByteLength);
                 }
 
                 if (status.Code is not Code.STATUS_SUCCESS)
