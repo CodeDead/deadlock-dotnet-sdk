@@ -1,0 +1,38 @@
+namespace Windows.Win32.System.Threading;
+/// <summary>
+/// The <see cref="AppCompatFlags"/> and <see cref="AppCompatFlagsUser"/>
+/// members are set by APPHELP.DLL from <c>TAG_FLAG_MASK_KERNEL</c> (0x5005) and <c>TAG_FLAG_MASK_USER</c> (0x5008)
+/// tags for the process's description in an SDB file. In the XML that SDB
+/// files are compiled from, the two are evaluated from the MASK attribute
+/// in a <c>&lt;FLAG></c> tag whose TYPE attribute is KERNEL or USER, respectively.
+/// </summary>
+[Flags]
+public enum PEB_AppCompat : ulong
+{
+    KACF_OLDGETSHORTPATHNAME = 1,
+    KACF_VERSIONLIE_NOT_USED = 1 << 1,
+    //not defined = 0x00000004,
+    KACF_GETDISKFREESPACE = 1 << 3,
+    //not defined = 0x00000010,
+    KACF_FTMFROMCURRENTAPT = 1 << 5,
+    KACF_DISALLOWORBINDINGCHANGES = 1 << 6,
+    KACF_OLE32VALIDATEPTRS = 1 << 7,
+    KACF_DISABLECICERO = 1 << 8,
+    KACF_OLE32ENABLEASYNCDOCFILE = 1 << 9,
+    KACF_OLE32ENABLELEGACYEXCEPTIONHANDLING = 1 << 10,
+    KACF_RPCDISABLENDRCLIENTHARDENING = 1 << 11,
+    KACF_RPCDISABLENDRMAYBENULL_SIZEIS = 1 << 12,
+    KACF_DISABLEALLDDEHACK_NOT_USED = 1 << 13,
+    KACF_RPCDISABLENDR61_RANGE = 1 << 14,
+    KACF_RPC32ENABLELEGACYEXCEPTIONHANDLING = 1 << 15,
+    KACF_OLE32DOCFILEUSELEGACYNTFSFLAGS = 1 << 16,
+    KACF_RPCDISABLENDRCONSTIIDCHECK = 1 << 17,
+    KACF_USERDISABLEFORWARDERPATCH = 1 << 18,
+    //not defined = 0x00080000,
+    KACF_OLE32DISABLENEW_WMPAINT_DISPATCH = 1 << 20,
+    KACF_ADDRESTRICTEDSIDINCOINITIALIZESECURITY = 1 << 21,
+    KACF_ALLOCDEBUGINFOFORCRITSECTIONS = 1 << 22,
+    KACF_OLEAUT32ENABLEUNSAFELOADTYPELIBRELATIVE = 1 << 23,
+    KACF_ALLOWMAXIMIZEDWINDOWGAMMA = 1 << 24,
+    KACF_DONOTADDTOCACHE = 1U << 31,
+}

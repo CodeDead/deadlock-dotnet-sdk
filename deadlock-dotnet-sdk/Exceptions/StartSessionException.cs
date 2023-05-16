@@ -9,5 +9,13 @@
         {
             // Default constructor
         }
+
+        public StartSessionException(string? message) : base(message)
+        {
+        }
+
+        public StartSessionException(string? message, Exception? innerException) : base(message, innerException)
+        {
+        }
     }
 }

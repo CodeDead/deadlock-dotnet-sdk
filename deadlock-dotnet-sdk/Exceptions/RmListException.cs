@@ -9,5 +9,11 @@
         {
             // Default constructor
         }
+
+        public RmListException(string? message) : base(message)
+        { }
+
+        public RmListException(string? message, Exception? innerException) : base(message, innerException)
+        { }
     }
 }
