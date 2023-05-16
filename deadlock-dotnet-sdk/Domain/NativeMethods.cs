@@ -175,7 +175,7 @@ internal static class NativeMethods
         {
             bool keep = false;
 
-            if (h.IsClosed)
+            if (h.IsClosed.v is true)
                 return false;
 
             if (!string.IsNullOrEmpty(query))

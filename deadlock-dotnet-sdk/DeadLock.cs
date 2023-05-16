@@ -309,7 +309,7 @@ namespace deadlock_dotnet_sdk
         {
             foreach (SafeFileHandleEx h in fileLocker.Lockers)
             {
-                if (h.IsClosed && h.IsInvalid) continue;
+                if (h.IsClosed.v is true && h.IsInvalid) continue;
                 try
                 {
                     h.CloseSourceHandle(true);
@@ -344,7 +344,7 @@ namespace deadlock_dotnet_sdk
             {
                 foreach (SafeFileHandleEx h in fileLocker.Lockers)
                 {
-                    if (h.IsClosed && h.IsInvalid) continue;
+                    if (h.IsClosed.v is true && h.IsInvalid) continue;
                     try
                     {
                         h.CloseSourceHandle(true);
@@ -366,7 +366,7 @@ namespace deadlock_dotnet_sdk
                 {
                     foreach (SafeFileHandleEx h in fileLocker.Lockers)
                     {
-                        if (h.IsClosed && h.IsInvalid) continue;
+                        if (h.IsClosed.v is true && h.IsInvalid) continue;
                         try
                         {
                             h.CloseSourceHandle(true);
